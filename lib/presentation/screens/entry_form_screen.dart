@@ -10,6 +10,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/utils/date_utils.dart';
 import '../../core/utils/exif_utils.dart';
 import '../../core/utils/image_compressor.dart';
+import '../../core/utils/video_compressor.dart';
 import '../../domain/entities/entry.dart';
 import '../providers/entry_provider.dart';
 
@@ -226,11 +227,18 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       );
       if (picked == null) return;
 
+      setState(() => _isSaving = true);
+
+      final compressed = await VideoCompressor.compress(File(picked.path));
+
       setState(() {
-        _mediaPath = picked.path;
+        _isSaving = false;
+        _mediaPath = compressed?.path ?? picked.path;
         _mediaType = 'video';
       });
-    } catch (_) {}
+    } catch (_) {
+      setState(() => _isSaving = false);
+    }
   }
 
   Future<void> _selectDate() async {
