@@ -6,9 +6,6 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData get darkTheme {
-    final exo2 = GoogleFonts.getText('Exo2');
-    final jetbrainsMono = GoogleFonts.getText('JetBrainsMono');
-
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.background,
@@ -19,42 +16,42 @@ class AppTheme {
         error: AppColors.error,
       ),
       textTheme: TextTheme(
-        displayLarge: exo2.copyWith(
-          fontSize: clampDouble(40, 5 * 16, 64),
+        displayLarge: GoogleFonts.exo2(
+          fontSize: 40,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
           letterSpacing: -0.5,
         ),
-        displayMedium: exo2.copyWith(
+        displayMedium: GoogleFonts.exo2(
           fontSize: 36,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        headlineLarge: exo2.copyWith(
+        headlineLarge: GoogleFonts.exo2(
           fontSize: 36,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        headlineMedium: exo2.copyWith(
+        headlineMedium: GoogleFonts.exo2(
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        bodyLarge: exo2.copyWith(
+        bodyLarge: GoogleFonts.exo2(
           fontSize: 16,
           height: 1.6,
           color: AppColors.textPrimary,
         ),
-        bodyMedium: exo2.copyWith(
+        bodyMedium: GoogleFonts.exo2(
           fontSize: 16,
           height: 1.6,
           color: AppColors.textSecondary,
         ),
-        bodySmall: exo2.copyWith(
+        bodySmall: GoogleFonts.exo2(
           fontSize: 14,
           color: AppColors.textMuted,
         ),
-        labelSmall: jetbrainsMono.copyWith(
+        labelSmall: GoogleFonts.jetBrainsMono(
           fontSize: 14,
           color: AppColors.textMuted,
         ),
@@ -102,13 +99,13 @@ class AppTheme {
           horizontal: 20,
           vertical: 16,
         ),
-        labelStyle: exo2.copyWith(color: AppColors.textMuted),
-        hintStyle: exo2.copyWith(color: AppColors.textMuted),
+        labelStyle: GoogleFonts.exo2(color: AppColors.textMuted),
+        hintStyle: GoogleFonts.exo2(color: AppColors.textMuted),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.glass,
         selectedColor: AppColors.accent.withOpacity(0.2),
-        labelStyle: exo2.copyWith(
+        labelStyle: GoogleFonts.exo2(
           fontSize: 14,
           color: AppColors.textPrimary,
         ),

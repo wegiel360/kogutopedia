@@ -8,13 +8,13 @@ import '../../domain/usecases/add_entry.dart';
 import '../../domain/usecases/get_entries.dart';
 import '../../domain/usecases/get_statistics.dart';
 
+final databaseProvider = Provider<KogutopediaDatabase>((ref) {
+  throw UnimplementedError('Database must be initialized before use');
+});
+
 final entryRepositoryProvider = Provider<EntryRepository>((ref) {
   final db = ref.read(databaseProvider);
   return EntryRepositoryImpl(db);
-});
-
-final databaseProvider = FutureProvider<KogutopediaDatabase>((ref) async {
-  return KogutopediaDatabase.getInstance();
 });
 
 final getEntriesUseCaseProvider = Provider<GetEntriesUseCase>((ref) {

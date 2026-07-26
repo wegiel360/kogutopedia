@@ -2,13 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/date_utils.dart';
 import '../../core/utils/exif_utils.dart';
 import '../../domain/entities/entry.dart';
 import '../providers/entry_provider.dart';
@@ -75,7 +73,6 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     try {
       final picked = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxDuration: AppConstants.maxVideoDuration,
       );
       if (picked == null) return;
 
@@ -87,53 +84,11 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         });
       }
 
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: picked.path,
-        aspectRatioPresets: [
-          CropAspectRatioPreset.square,
-          CropAspectRatioPreset.ratio3x2,
-          CropAspectRatioPreset.original,
-          CropAspectRatioPreset.ratio4x3,
-          CropAspectRatioPreset.ratio16x9,
-          CropAspectRatioPreset.custom,
-        ],
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Kadruj zdjęcie',
-            toolbarColor: AppColors.surfaceDark,
-            toolbarWidgetColor: AppColors.textPrimary,
-            backgroundColor: AppColors.background,
-            activeWidgetColor: AppColors.accent,
-            statusBarColor: AppColors.background,
-            initAspectRatio: CropAspectRatioPreset.original,
-          ),
-        ],
-      );
-      if (cropped == null) return;
-
-      final compressed = await _compressImage(cropped.path);
       setState(() {
-        _mediaPath = compressed ?? cropped.path;
+        _mediaPath = picked.path;
         _mediaType = 'image';
       });
     } catch (_) {}
-  }
-
-  Future<String?> _compressImage(String path) async {
-    try {
-      final dir = await getTemporaryDirectory();
-      final targetPath = '${dir.path}/${_uuid.v4()}.webp';
-
-      final result = await FlutterImageCompress.compressAndGetFile(
-        path,
-        targetPath,
-        quality: AppConstants.imageQuality,
-        format: CompressFormat.webp,
-      );
-      return result?.path;
-    } catch (_) {
-      return null;
-    }
   }
 
   Future<void> _pickVideo() async {
@@ -288,7 +243,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                           widget.existingEntry != null
                               ? 'Zapisz zmiany'
                               : 'Dodaj wpis',
-                          style: GoogleFonts.getText('Exo2').copyWith(
+                          style: GoogleFonts.exo2().copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -351,7 +306,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             const SizedBox(width: 8),
             Text(
               AppDateUtils.formatDate(_entryDate),
-              style: GoogleFonts.getText('JetBrainsMono').copyWith(
+              style: GoogleFonts.jetBrainsMono().copyWith(
                 color: AppColors.textPrimary,
                 fontSize: 14,
               ),
@@ -381,7 +336,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             const SizedBox(width: 8),
             Text(
               _entryTime.format(context),
-              style: GoogleFonts.getText('JetBrainsMono').copyWith(
+              style: GoogleFonts.jetBrainsMono().copyWith(
                 color: AppColors.textPrimary,
                 fontSize: 14,
               ),
@@ -450,7 +405,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 labelText: 'Imię',
                 hintText: 'Wpisz imię kurczaka',
               ),
-              style: GoogleFonts.getText('Exo2').copyWith(
+              style: GoogleFonts.exo2().copyWith(
                 color: AppColors.textPrimary,
               ),
             ),

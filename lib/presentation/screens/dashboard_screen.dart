@@ -141,8 +141,8 @@ class _DashboardContent extends ConsumerWidget {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          _buildHeader(ref, statsState, achievementState),
-          _buildMotivationBar(entryState),
+          _buildHeader(context, ref, statsState, achievementState),
+          _buildMotivationBar(context, entryState),
           if (entryState.entries.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
@@ -152,7 +152,7 @@ class _DashboardContent extends ConsumerWidget {
               ),
             )
           else
-            _buildEntriesList(entryState),
+            _buildEntriesList(context, entryState),
         ],
       ),
     );
@@ -173,8 +173,8 @@ class _DashboardContent extends ConsumerWidget {
             flex: 2,
             child: CustomScrollView(
               slivers: [
-                _buildHeader(ref, statsState, achievementState),
-                _buildMotivationBar(entryState),
+                _buildHeader(context, ref, statsState, achievementState),
+                _buildMotivationBar(context, entryState),
                 if (entryState.entries.isEmpty)
                   const SliverFillRemaining(
                     hasScrollBody: false,
@@ -184,7 +184,7 @@ class _DashboardContent extends ConsumerWidget {
                     ),
                   )
                 else
-                  _buildEntriesList(entryState),
+                  _buildEntriesList(context, entryState),
               ],
             ),
           ),
@@ -194,9 +194,9 @@ class _DashboardContent extends ConsumerWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _buildQuickPreview(entryState),
+                  _buildQuickPreview(context, entryState),
                   const SizedBox(height: 16),
-                  _buildDailyChallengeCard(achievementState),
+                  _buildDailyChallengeCard(context, achievementState),
                 ],
               ),
             ),
@@ -221,8 +221,8 @@ class _DashboardContent extends ConsumerWidget {
             flex: 3,
             child: CustomScrollView(
               slivers: [
-                _buildHeader(ref, statsState, achievementState),
-                _buildMotivationBar(entryState),
+                _buildHeader(context, ref, statsState, achievementState),
+                _buildMotivationBar(context, entryState),
                 if (entryState.entries.isEmpty)
                   const SliverFillRemaining(
                     hasScrollBody: false,
@@ -232,7 +232,7 @@ class _DashboardContent extends ConsumerWidget {
                     ),
                   )
                 else
-                  _buildEntriesGrid(entryState),
+                  _buildEntriesGrid(context, entryState),
               ],
             ),
           ),
@@ -242,11 +242,11 @@ class _DashboardContent extends ConsumerWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _buildQuickPreview(entryState),
+                  _buildQuickPreview(context, entryState),
                   const SizedBox(height: 16),
-                  _buildDailyChallengeCard(achievementState),
+                  _buildDailyChallengeCard(context, achievementState),
                   const SizedBox(height: 16),
-                  _buildAchievementsPreview(achievementState),
+                  _buildAchievementsPreview(context, achievementState),
                 ],
               ),
             ),
@@ -256,7 +256,12 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(WidgetRef ref, StatsState statsState, AchievementState achievementState) {
+  Widget _buildHeader(
+    BuildContext context,
+    WidgetRef ref,
+    StatsState statsState,
+    AchievementState achievementState,
+  ) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -283,7 +288,7 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildMotivationBar(EntryState entryState) {
+  Widget _buildMotivationBar(BuildContext context, EntryState entryState) {
     final hasRecentEntries = entryState.entries.isNotEmpty &&
         AppDateUtils.isSameDay(
           entryState.entries.first.entryDate,
@@ -327,7 +332,7 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickPreview(EntryState entryState) {
+  Widget _buildQuickPreview(BuildContext context, EntryState entryState) {
     final recent = entryState.entries.take(3).toList();
     if (recent.isEmpty) return const SizedBox.shrink();
 
@@ -357,7 +362,7 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildDailyChallengeCard(AchievementState achievementState) {
+  Widget _buildDailyChallengeCard(BuildContext context, AchievementState achievementState) {
     final challenge = achievementState.dailyChallenge;
     if (challenge == null) {
       return GlassCard(
@@ -419,7 +424,7 @@ class _DashboardContent extends ConsumerWidget {
               ),
               child: Text(
                 isCompleted ? 'Wykonane' : 'Do wykonania',
-                style: GoogleFonts.getText('JetBrainsMono').copyWith(
+                style: GoogleFonts.jetBrainsMono().copyWith(
                   fontSize: 12,
                   color: isCompleted ? AppColors.success : AppColors.textMuted,
                 ),
@@ -431,7 +436,7 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildAchievementsPreview(AchievementState achievementState) {
+  Widget _buildAchievementsPreview(BuildContext context, AchievementState achievementState) {
     final achievements = achievementState.achievements
         .where((a) => !a.isDailyChallenge)
         .toList();
@@ -483,7 +488,7 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildEntriesList(EntryState entryState) {
+  Widget _buildEntriesList(BuildContext context, EntryState entryState) {
     final entries = entryState.filteredEntries;
     return SliverList(
       delegate: SliverChildBuilderDelegate(
@@ -499,7 +504,7 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildEntriesGrid(EntryState entryState) {
+  Widget _buildEntriesGrid(BuildContext context, EntryState entryState) {
     final entries = entryState.filteredEntries;
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

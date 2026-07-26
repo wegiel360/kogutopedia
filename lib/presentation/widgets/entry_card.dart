@@ -36,12 +36,12 @@ class EntryCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        children: [
-                          _buildCharacterChip(),
-                          const Spacer(),
+                    children: [
+                      _buildCharacterChip(context),
+                      const Spacer(),
                           Text(
                             AppDateUtils.formatDateTime(entry.entryDate),
-                            style: GoogleFonts.getText('JetBrainsMono').copyWith(
+                            style: GoogleFonts.jetBrainsMono().copyWith(
                               fontSize: 11,
                               color: AppColors.textMuted,
                             ),
@@ -138,7 +138,7 @@ class EntryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCharacterChip() {
+  Widget _buildCharacterChip(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:exif/exif.dart';
 
 class ExifUtils {
   ExifUtils._();
@@ -9,17 +8,8 @@ class ExifUtils {
       final file = File(filePath);
       if (!await file.exists()) return null;
 
-      final bytes = await file.readAsBytes();
-      final tags = await readExifFromBytes(bytes);
-
-      final dateTaken = tags['EXIF DateTimeOriginal'] ??
-          tags['EXIF DateTimeDigitized'] ??
-          tags['Image DateTime'];
-
-      if (dateTaken != null) {
-        return ExifTag.parseDate(dateTaken.printable);
-      }
-      return null;
+      final stat = await file.stat();
+      return stat.modified;
     } catch (_) {
       return null;
     }

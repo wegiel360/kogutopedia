@@ -141,7 +141,7 @@ class StatsScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: GoogleFonts.getText('JetBrainsMono').copyWith(
+              style: GoogleFonts.jetBrainsMono().copyWith(
                 fontSize: 32,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -191,7 +191,7 @@ class StatsScreen extends ConsumerWidget {
                         ),
                         Text(
                           '${char.count} wpisów',
-                          style: GoogleFonts.getText('JetBrainsMono').copyWith(
+                          style: GoogleFonts.jetBrainsMono().copyWith(
                             fontSize: 12,
                             color: AppColors.textMuted,
                           ),
@@ -215,7 +215,7 @@ class StatsScreen extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${percentage.toStringAsFixed(1)}%',
-                      style: GoogleFonts.getText('JetBrainsMono').copyWith(
+                      style: GoogleFonts.jetBrainsMono().copyWith(
                         fontSize: 11,
                         color: AppColors.textMuted,
                       ),

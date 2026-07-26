@@ -9,7 +9,7 @@ import '../../domain/usecases/get_statistics.dart';
 import 'entry_provider.dart';
 
 final achievementRepositoryProvider = Provider<AchievementRepository>((ref) {
-  final db = ref.watch(databaseProvider).valueOrThrow;
+  final db = ref.watch(databaseProvider);
   return AchievementRepositoryImpl(db);
 });
 
@@ -115,25 +115,24 @@ class AchievementNotifier extends StateNotifier<AchievementState> {
   }
 
   Future<void> checkAndUnlockAchievements() async {
-    final stats = await _getStatistics();
-    final entries = await _getStatistics();
+    final appStats = await _getStatistics();
 
     final allAchievements = await _repository.getAllAchievements();
     final unlockedIds = allAchievements.map((a) => a.achievementId).toSet();
 
-    final weeklyPhotos = stats.statistics?.totalEntries ?? 0;
-    if (weeklyPhotos >= AppConstants.paparazziThreshold &&
+    final totalEntries = appStats.totalEntries;
+    if (totalEntries >= AppConstants.paparazziThreshold &&
         !unlockedIds.contains('paparazzi')) {
       await _repository.unlockAchievement(Achievement(
         achievementId: 'paparazzi',
         title: 'Paparazzi',
-        description: 'Zrobiłeś $weeklyPhotos zdjęć w tym tygodniu!',
+        description: 'Zrobiłeś $totalEntries zdjęć!',
         iconName: 'camera',
         unlockedAt: DateTime.now(),
       ));
     }
 
-    final videoCount = stats.statistics?.totalMediaCount ?? 0;
+    final videoCount = appStats.totalMediaCount;
     if (videoCount >= AppConstants.directorThreshold &&
         !unlockedIds.contains('director')) {
       await _repository.unlockAchievement(Achievement(

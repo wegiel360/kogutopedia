@@ -1,4 +1,3 @@
-import 'package:isar/isar.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/errors/app_exceptions.dart';
 import '../../core/utils/date_utils.dart';
@@ -10,16 +9,15 @@ import '../models/entry_model.dart';
 class EntryRepositoryImpl implements EntryRepository {
   final KogutopediaDatabase _db;
   final Uuid _uuid = const Uuid();
+  int _nextId = 1;
 
   EntryRepositoryImpl(this._db);
 
   @override
   Future<List<Entry>> getAllEntries() async {
     try {
-      final models = await _db.isar.entryModels
-          .where()
-          .sortByEntryDateDesc()
-          .findAll();
+      final models = await _db.getEntries();
+      models.sort((a, b) => b.entryDate.compareTo(a.entryDate));
       return models.map(_toEntity).toList();
     } catch (e) {
       throw DatabaseException('Failed to fetch entries: $e');
@@ -29,10 +27,8 @@ class EntryRepositoryImpl implements EntryRepository {
   @override
   Future<Entry?> getEntryById(String uuid) async {
     try {
-      final model = await _db.isar.entryModels
-          .filter()
-          .uuidEqualTo(uuid)
-          .findFirst();
+      final models = await _db.getEntries();
+      final model = models.where((e) => e.uuid == uuid).firstOrNull;
       return model != null ? _toEntity(model) : null;
     } catch (e) {
       throw DatabaseException('Failed to fetch entry: $e');
@@ -42,12 +38,23 @@ class EntryRepositoryImpl implements EntryRepository {
   @override
   Future<Entry> addEntry(Entry entry) async {
     try {
+      final models = await _db.getEntries();
       final model = _toModel(entry);
-      model.uuid = _uuid.v4();
-      await _db.isar.writeTxn(() async {
-        await _db.isar.entryModels.put(model);
-      });
-      return _toEntity(model);
+      _nextId = models.fold(0, (max, e) => e.id != null && e.id! > max ? e.id! : max) + 1;
+      final newModel = EntryModel(
+        id: _nextId,
+        uuid: _uuid.v4(),
+        createdAt: entry.createdAt,
+        entryDate: entry.entryDate,
+        characterName: entry.characterName,
+        title: entry.title,
+        description: entry.description,
+        mediaPath: entry.mediaPath,
+        mediaType: entry.mediaType,
+      );
+      models.add(newModel);
+      await _db.saveEntries(models);
+      return _toEntity(newModel);
     } catch (e) {
       throw DatabaseException('Failed to add entry: $e');
     }
@@ -56,19 +63,26 @@ class EntryRepositoryImpl implements EntryRepository {
   @override
   Future<Entry> updateEntry(Entry entry) async {
     try {
-      final existing = await _db.isar.entryModels
-          .filter()
-          .uuidEqualTo(entry.uuid)
-          .findFirst();
-      if (existing == null) {
+      final models = await _db.getEntries();
+      final index = models.indexWhere((e) => e.uuid == entry.uuid);
+      if (index == -1) {
         throw DatabaseException('Entry not found');
       }
-      final model = _toModel(entry);
-      model.id = existing.id;
-      await _db.isar.writeTxn(() async {
-        await _db.isar.entryModels.put(model);
-      });
-      return _toEntity(model);
+      final existing = models[index];
+      final updated = EntryModel(
+        id: existing.id,
+        uuid: existing.uuid,
+        createdAt: existing.createdAt,
+        entryDate: entry.entryDate,
+        characterName: entry.characterName,
+        title: entry.title,
+        description: entry.description,
+        mediaPath: entry.mediaPath,
+        mediaType: entry.mediaType,
+      );
+      models[index] = updated;
+      await _db.saveEntries(models);
+      return _toEntity(updated);
     } catch (e) {
       if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to update entry: $e');
@@ -78,15 +92,9 @@ class EntryRepositoryImpl implements EntryRepository {
   @override
   Future<void> deleteEntry(String uuid) async {
     try {
-      final existing = await _db.isar.entryModels
-          .filter()
-          .uuidEqualTo(uuid)
-          .findFirst();
-      if (existing != null) {
-        await _db.isar.writeTxn(() async {
-          await _db.isar.entryModels.delete(existing.id);
-        });
-      }
+      final models = await _db.getEntries();
+      models.removeWhere((e) => e.uuid == uuid);
+      await _db.saveEntries(models);
     } catch (e) {
       throw DatabaseException('Failed to delete entry: $e');
     }
@@ -95,12 +103,10 @@ class EntryRepositoryImpl implements EntryRepository {
   @override
   Future<List<Entry>> getEntriesByCharacter(String characterName) async {
     try {
-      final models = await _db.isar.entryModels
-          .filter()
-          .characterNameEqualTo(characterName)
-          .sortByEntryDateDesc()
-          .findAll();
-      return models.map(_toEntity).toList();
+      final models = await _db.getEntries();
+      final filtered = models.where((e) => e.characterName == characterName).toList();
+      filtered.sort((a, b) => b.entryDate.compareTo(a.entryDate));
+      return filtered.map(_toEntity).toList();
     } catch (e) {
       throw DatabaseException('Failed to fetch entries by character: $e');
     }
@@ -110,11 +116,9 @@ class EntryRepositoryImpl implements EntryRepository {
   Future<List<Entry>> getEntriesForDate(DateTime date) async {
     try {
       final dateKey = AppDateUtils.dateKey(date);
-      final models = await _db.isar.entryModels
-          .filter()
-          .dateKeyEqualTo(dateKey)
-          .findAll();
-      return models.map(_toEntity).toList();
+      final models = await _db.getEntries();
+      final filtered = models.where((e) => e.dateKey == dateKey).toList();
+      return filtered.map(_toEntity).toList();
     } catch (e) {
       throw DatabaseException('Failed to fetch entries for date: $e');
     }
@@ -123,7 +127,8 @@ class EntryRepositoryImpl implements EntryRepository {
   @override
   Future<int> getTotalEntryCount() async {
     try {
-      return await _db.isar.entryModels.count();
+      final models = await _db.getEntries();
+      return models.length;
     } catch (e) {
       throw DatabaseException('Failed to count entries: $e');
     }
@@ -132,12 +137,8 @@ class EntryRepositoryImpl implements EntryRepository {
   @override
   Future<int> getStreakCount() async {
     try {
-      final tomekEntries = await _db.isar.entryModels
-          .filter()
-          .characterNameEqualTo('Tomek')
-          .sortByDateKeyDesc()
-          .findAll();
-
+      final models = await _db.getEntries();
+      final tomekEntries = models.where((e) => e.characterName == 'Tomek').toList();
       final uniqueDays = <String>{};
       for (final entry in tomekEntries) {
         uniqueDays.add(entry.dateKey);

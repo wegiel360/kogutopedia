@@ -41,7 +41,7 @@ class StreakIndicator extends StatelessWidget {
                 children: [
                   Text(
                     'Dni z Tomkiem: $streakCount',
-                    style: GoogleFonts.getText('JetBrainsMono').copyWith(
+                    style: GoogleFonts.jetBrainsMono().copyWith(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
