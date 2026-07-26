@@ -42,6 +42,11 @@ macos/Flutter/ephemeral/
 # Web
 web/fonts/
 
+# Firebase
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+
 # Misc
 *.swp
 *.swo

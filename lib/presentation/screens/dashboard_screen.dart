@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/date_utils.dart';
 import '../providers/achievement_provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
 import '../providers/stats_provider.dart';
 import '../widgets/empty_state.dart';
@@ -268,9 +269,20 @@ class _DashboardContent extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Kogutopedia',
-              style: Theme.of(context).textTheme.displayMedium,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Kogutopedia',
+                    style: Theme.of(context).textTheme.displayMedium,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: AppColors.textMuted),
+                  tooltip: 'Wyloguj',
+                  onPressed: () => ref.read(authProvider.notifier).signOut(),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(

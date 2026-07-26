@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'app.dart';
 import 'data/database/kogutopedia_db.dart';
+import 'firebase_options.dart';
 import 'presentation/providers/entry_provider.dart';
+import 'core/utils/updater.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,14 +20,23 @@ void main() async {
     ),
   );
 
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   final database = await KogutopediaDatabase.getInstance();
+
+  UpdateInfo? update;
+  try {
+    update = await AppUpdater.checkForUpdate();
+  } catch (_) {}
 
   runApp(
     ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(database),
       ],
-      child: const KogutopediaApp(),
+      child: KogutopediaApp(pendingUpdate: update),
     ),
   );
 }
