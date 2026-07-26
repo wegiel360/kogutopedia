@@ -99,10 +99,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.pets,
-                        color: AppColors.accent,
-                        size: 64,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: Image.asset(
+                          'assets/Tomekbeztlajakoidealnaikonawszedzie.png',
+                          width: 64, height: 64,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -272,7 +275,14 @@ class _RegisterScreenState extends ConsumerState<_RegisterScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.pets, color: AppColors.accent, size: 64),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: Image.asset(
+                          'assets/Tomekbeztlajakoidealnaikonawszedzie.png',
+                          width: 64, height: 64,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'Rejestracja',

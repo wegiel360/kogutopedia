@@ -6,6 +6,7 @@ import 'app.dart';
 import 'data/database/kogutopedia_db.dart';
 import 'firebase_options.dart';
 import 'presentation/providers/entry_provider.dart';
+import 'core/utils/slogan_loader.dart';
 import 'core/utils/updater.dart';
 
 void main() async {
@@ -25,6 +26,7 @@ void main() async {
   );
 
   final database = await KogutopediaDatabase.getInstance();
+  await SloganLoader.load();
 
   UpdateInfo? update;
   try {

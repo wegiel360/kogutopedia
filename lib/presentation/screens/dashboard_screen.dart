@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/date_utils.dart';
+import '../../core/utils/slogan_loader.dart';
 import '../providers/achievement_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
@@ -295,7 +296,7 @@ class _DashboardContent extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Dziennik domowego dróbku',
+              SloganLoader.slogan,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
@@ -335,7 +336,14 @@ class _DashboardContent extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.pets, color: AppColors.warning, size: 28),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    'assets/Tomekbeztlajakoidealnaikonawszedzie.png',
+                    width: 28, height: 28,
+                    fit: BoxFit.cover,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

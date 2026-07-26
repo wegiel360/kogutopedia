@@ -30,4 +30,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/Tomekbeztlajakoidealnaikonawszedzie.png
+    - assets/kogutopediA-logo-i-ikona-apki.png
+    - assets/slogan.txt
 
