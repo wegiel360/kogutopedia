@@ -1,0 +1,96 @@
+name: Build Kogutopedia
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: linux
+            output: kogutopedia-linux.zip
+          - os: windows-latest
+            target: windows
+            output: kogutopedia-windows.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build APK (Android)
+        if: matrix.os == 'ubuntu-latest'
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: flutter build linux --release
+
+      - name: Build Windows
+        if: matrix.os == 'windows-latest'
+        run: flutter build windows --release
+
+      - name: Upload APK artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kogutopedia-apk
+          path: build/app/outputs/flutter-apk/*.apk
+
+      - name: Upload Linux build
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kogutopedia-linux
+          path: build/linux/x64/release/bundle/
+
+      - name: Upload Windows build
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kogutopedia-windows
+          path: build/windows/x64/runner/Release/
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Kogutopedia v${{ github.run_number }}
+          body_path: CHANGELOG.md
+          files: |
+            kogutopedia-apk/*.apk
+            kogutopedia-linux/**/*
+            kogutopedia-windows/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

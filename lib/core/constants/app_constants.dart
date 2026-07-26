@@ -2,7 +2,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Kogutopedia';
-  static const String appVersion = '0.0.1-alpha';
+  static const String appVersion = '0.0.2-alpha';
 
   static const String defaultCharacter = 'Tomek';
   static const List<String> predefinedCharacters = [

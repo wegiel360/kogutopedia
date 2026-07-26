@@ -1,7 +1,7 @@
 name: kogutopedia
 description: Dziennik domowego dróbku - Kogutopedia
 publish_to: 'none'
-version: 0.0.1-alpha
+version: 0.0.2-alpha
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
