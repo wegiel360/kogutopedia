@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
@@ -84,8 +85,29 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         });
       }
 
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Kadruj zdjęcie',
+            toolbarColor: AppColors.surfaceDark,
+            toolbarWidgetColor: AppColors.textPrimary,
+            backgroundColor: AppColors.background,
+            initAspectRatio: CropAspectRatioPreset.original,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+          ),
+        ],
+      );
+      if (cropped == null) return;
+
       setState(() {
-        _mediaPath = picked.path;
+        _mediaPath = cropped.path;
         _mediaType = 'image';
       });
     } catch (_) {}
