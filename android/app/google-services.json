@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "384110007427",
+    "project_id": "kogutopedia",
+    "storage_bucket": "kogutopedia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:384110007427:android:e5c5a40fa48368061777b6",
+        "android_client_info": {
+          "package_name": "com.wegiel360.kogutopedia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7JAiMwFMphLd_ZOY0Jzqsr8NGKvSD3KQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

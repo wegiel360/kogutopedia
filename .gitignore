@@ -42,10 +42,10 @@ macos/Flutter/ephemeral/
 # Web
 web/fonts/
 
-# Firebase
-android/app/google-services.json
+# Firebase (keep actual config files in repo)
 ios/Runner/GoogleService-Info.plist
-lib/firebase_options.dart
+*.jks
+*.keystore
 
 # Misc
 *.swp
