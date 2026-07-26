@@ -70,11 +70,114 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  void _showImageSourceChooser() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textMuted,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Dodaj zdjęcie', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+              const SizedBox(height: 20),
+              _sourceOption(
+                icon: Icons.photo_library,
+                label: 'Z galerii',
+                onTap: () { Navigator.of(ctx).pop(); _pickImage(ImageSource.gallery); },
+              ),
+              const SizedBox(height: 8),
+              _sourceOption(
+                icon: Icons.camera_alt,
+                label: 'Zrób zdjęcie',
+                onTap: () { Navigator.of(ctx).pop(); _pickImage(ImageSource.camera); },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showVideoSourceChooser() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textMuted,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Dodaj film', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+              const SizedBox(height: 20),
+              _sourceOption(
+                icon: Icons.photo_library,
+                label: 'Z galerii',
+                onTap: () { Navigator.of(ctx).pop(); _pickVideo(ImageSource.gallery); },
+              ),
+              const SizedBox(height: 8),
+              _sourceOption(
+                icon: Icons.videocam,
+                label: 'Nagraj film',
+                onTap: () { Navigator.of(ctx).pop(); _pickVideo(ImageSource.camera); },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.accent,
+          side: const BorderSide(color: AppColors.borderGlow),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(
-        source: ImageSource.gallery,
-      );
+      final picked = await _picker.pickImage(source: source);
       if (picked == null) return;
 
       final exifDate = await ExifUtils.readExifDate(picked.path);
@@ -113,10 +216,10 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     } catch (_) {}
   }
 
-  Future<void> _pickVideo() async {
+  Future<void> _pickVideo(ImageSource source) async {
     try {
       final picked = await _picker.pickVideo(
-        source: ImageSource.gallery,
+        source: source,
         maxDuration: AppConstants.maxVideoDuration,
       );
       if (picked == null) return;
@@ -524,8 +627,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                   child: SizedBox(
                     height: 56,
                     child: OutlinedButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.photo_library),
+                      onPressed: _showImageSourceChooser,
+                      icon: const Icon(Icons.camera_alt),
                       label: const Text('Zdjęcie'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.accent,
@@ -542,7 +645,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                   child: SizedBox(
                     height: 56,
                     child: OutlinedButton.icon(
-                      onPressed: _pickVideo,
+                      onPressed: _showVideoSourceChooser,
                       icon: const Icon(Icons.videocam),
                       label: const Text('Film'),
                       style: OutlinedButton.styleFrom(
