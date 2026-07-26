@@ -1,0 +1,50 @@
+# Flutter
+.dart_tool/
+.packages
+.buildlog
+*.iml
+.idea/
+.vscode/
+*.lock
+.generated/
+build/
+flutter_*.png
+coverage/
+.dart_tool/
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/build/
+android/.idea/
+android/build/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Linux
+linux/flutter/ephemeral/
+
+# Windows
+windows/flutter/ephemeral/
+windows/runner/Debug/
+windows/runner/Release/
+*.vcxproj.user
+
+# macOS
+macos/Pods/
+macos/.symlinks/
+macos/Flutter/ephemeral/
+
+# Web
+web/fonts/
+
+# Misc
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
