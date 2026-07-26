@@ -53,3 +53,5 @@ lib/firebase_options.dart
 *~
 .DS_Store
 Thumbs.db
+
+.github/workflows/build.yml
