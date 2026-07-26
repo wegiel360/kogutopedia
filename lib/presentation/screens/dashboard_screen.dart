@@ -13,8 +13,10 @@ import '../widgets/entry_card.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/streak_indicator.dart';
+import '../providers/feather_provider.dart';
 import 'achievements_screen.dart';
 import 'entry_form_screen.dart';
+import 'feather_grid_screen.dart';
 import 'gallery_screen.dart';
 import 'stats_screen.dart';
 
@@ -32,6 +34,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _DashboardContent(),
     StatsScreen(),
     GalleryScreen(),
+    FeatherGridScreen(),
     AchievementsScreen(),
   ];
 
@@ -42,6 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(entryNotifierProvider.notifier).loadEntries();
       ref.read(statsNotifierProvider.notifier).loadStatistics();
       ref.read(achievementNotifierProvider.notifier).loadAchievements();
+      ref.read(featherNotifierProvider.notifier).loadFeathers();
     });
   }
 
@@ -80,6 +84,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               icon: Icon(Icons.photo_library_outlined),
               activeIcon: Icon(Icons.photo_library),
               label: 'Galeria',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.eco_outlined),
+              activeIcon: Icon(Icons.eco),
+              label: 'Pióra',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.emoji_events_outlined),
