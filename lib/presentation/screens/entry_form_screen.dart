@@ -9,6 +9,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/date_utils.dart';
 import '../../core/utils/exif_utils.dart';
+import '../../core/utils/image_compressor.dart';
 import '../../domain/entities/entry.dart';
 import '../providers/entry_provider.dart';
 
@@ -209,8 +210,9 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       );
       if (cropped == null) return;
 
+      final compressed = await ImageCompressor.compress(input: File(cropped.path));
       setState(() {
-        _mediaPath = cropped.path;
+        _mediaPath = compressed.path;
         _mediaType = 'image';
       });
     } catch (_) {}

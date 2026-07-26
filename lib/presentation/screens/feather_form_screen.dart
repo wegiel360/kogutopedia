@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/image_compressor.dart';
 import '../../data/database/kogutopedia_db.dart';
 import '../providers/entry_provider.dart';
 import '../providers/feather_provider.dart';
@@ -44,21 +44,13 @@ class _FeatherFormScreenState extends ConsumerState<FeatherFormScreen> {
       final picked = await _picker.pickImage(source: ImageSource.gallery);
       if (picked == null) return;
 
-      final db = ref.read(databaseProvider);
-      final mediaDir = db.getMediaPath();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final webpPath = '$mediaDir/feather_$timestamp.webp';
-
-      final result = await FlutterImageCompress.compressAndGetFile(
-        picked.path,
-        webpPath,
-        format: CompressFormat.webp,
-        quality: AppConstants.imageQuality,
+      final compressed = await ImageCompressor.compress(
+        input: File(picked.path),
+        outputPath:
+            '${ref.read(databaseProvider).getMediaPath()}/feather_${DateTime.now().millisecondsSinceEpoch}.jpeg',
       );
 
-      if (result != null) {
-        setState(() => _imagePath = result.path);
-      }
+      setState(() => _imagePath = compressed.path);
     } catch (_) {}
   }
 
