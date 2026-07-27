@@ -179,77 +179,103 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
 
   Future<void> _pickMultipleMedia() async {
     try {
-      final picked = await _picker.pickMultipleMedia(
+      final picked = await _picker.pickMultiImage(
         maxWidth: 1920,
         maxHeight: 1920,
         imageQuality: 80,
       );
-      if (picked.isEmpty) return;
-
-      _showCompressionProgress('Przetwarzanie ${picked.length} plików...');
 
       final paths = <String>[];
       final types = <String>[];
 
-      for (int i = 0; i < picked.length; i++) {
-        final xfile = picked[i];
-        final isVideo = xfile.mimeType?.startsWith('video/') == true;
-        _compressionStatus = 'Przetwarzanie ${i + 1} / ${picked.length}...';
-
-        if (isVideo) {
-          try {
-            final shouldCompress = await _showCompressionChoice(File(xfile.path));
-            if (shouldCompress) {
-              setState(() => _compressionStatus = 'Kompresowanie filmu ${i + 1} / ${picked.length}...');
-              final compressed = await VideoCompressor.compress(File(xfile.path));
-              if (compressed != null) {
-                final newSizeMB = (await compressed.length()) / (1024 * 1024);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Film ${i + 1}: ${newSizeMB.toStringAsFixed(1)} MB'),
-                      backgroundColor: AppColors.accent.withOpacity(0.8),
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                }
-                paths.add(compressed.path);
-              } else {
-                paths.add(xfile.path);
-              }
-            } else {
-              paths.add(xfile.path);
-            }
-            types.add('video');
-          } catch (e) {
-            _showError(e);
-            paths.add(xfile.path);
-            types.add('video');
-          }
-        } else {
-          paths.add(xfile.path);
+      if (picked.isNotEmpty) {
+        _showCompressionProgress('Przetwarzanie ${picked.length} zdjęć...');
+        for (int i = 0; i < picked.length; i++) {
+          _compressionStatus = 'Przetwarzanie ${i + 1} / ${picked.length}...';
+          paths.add(picked[i].path);
           types.add('image');
+        }
+        _hideCompressionProgress();
+
+        if (widget.existingEntry == null) {
+          try {
+            final exifDate = await ExifUtils.readExifDate(picked.first.path);
+            if (exifDate != null) {
+              setState(() {
+                _entryDate = exifDate;
+                _entryTime = TimeOfDay.fromDateTime(exifDate);
+              });
+            }
+          } catch (_) {}
         }
       }
 
-      if (picked.isNotEmpty && widget.existingEntry == null) {
-        try {
-          final exifDate = await ExifUtils.readExifDate(picked.first.path);
-          if (exifDate != null) {
-            setState(() {
-              _entryDate = exifDate;
-              _entryTime = TimeOfDay.fromDateTime(exifDate);
-            });
+      final addVideo = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF0A1628),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0x8000F0FF), width: 0.5),
+          ),
+          title: const Text('Dodaj film?',
+              style: TextStyle(color: Colors.white)),
+          content: const Text(
+            'Czy chcesz dodać również film z galerii?',
+            style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Nie',
+                  style: TextStyle(color: Color(0x80FFFFFF))),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Tak',
+                  style: TextStyle(color: Color(0xFF00F0FF))),
+            ),
+          ],
+        ),
+      );
+
+      if (addVideo == true) {
+        final video = await _picker.pickVideo(source: ImageSource.gallery);
+        if (video != null) {
+          final shouldCompress = await _showCompressionChoice(File(video.path));
+          if (shouldCompress) {
+            _showCompressionProgress('Kompresowanie filmu...');
+            final compressed = await VideoCompressor.compress(File(video.path));
+            _hideCompressionProgress();
+            if (compressed != null) {
+              final newSizeMB = (await compressed.length()) / (1024 * 1024);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Film: ${newSizeMB.toStringAsFixed(1)} MB'),
+                    backgroundColor: AppColors.accent.withOpacity(0.8),
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+              paths.add(compressed.path);
+            } else {
+              paths.add(video.path);
+            }
+          } else {
+            paths.add(video.path);
           }
-        } catch (_) {}
+          types.add('video');
+        }
       }
 
-      _hideCompressionProgress();
-      setState(() {
-        _mediaPaths.addAll(paths);
-        _mediaTypes.addAll(types);
-      });
+      if (paths.isNotEmpty) {
+        setState(() {
+          _mediaPaths.addAll(paths);
+          _mediaTypes.addAll(types);
+        });
+      }
     } catch (e) {
       _hideCompressionProgress();
       _showError(e);
