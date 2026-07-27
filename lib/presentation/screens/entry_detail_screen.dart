@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_utils.dart';
 import '../../domain/entities/entry.dart';
+import '../providers/entry_provider.dart';
 import '../providers/storage_provider.dart';
 import 'entry_form_screen.dart';
 
@@ -22,6 +23,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
   bool _showStorageProgress = false;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -71,6 +73,74 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
     );
   }
 
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0A1628),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0x8000F0FF), width: 0.5),
+        ),
+        title: const Text(
+          'Usuń wpis',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Czy na pewno chcesz usunąć ten wpis? Multimedia zostaną również usunięte z Firebase Storage.',
+          style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Anuluj',
+                style: TextStyle(color: Color(0x80FFFFFF))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Usuń',
+                style: TextStyle(color: Color(0xFFFF5252))),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _deleteEntry();
+    }
+  }
+
+  Future<void> _deleteEntry() async {
+    setState(() => _isDeleting = true);
+
+    try {
+      final entry = widget.entry;
+      final storage = ref.read(storageProvider.notifier);
+
+      for (int i = 0; i < entry.mediaPaths.length; i++) {
+        try {
+          final ext = entry.mediaTypes.length > i && entry.mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
+          await storage.deleteMedia('media/${entry.uuid}_$i.$ext');
+        } catch (_) {}
+      }
+
+      await ref.read(entryNotifierProvider.notifier).deleteEntry(entry.uuid);
+
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Błąd usuwania: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final storageState = ref.watch(storageProvider);
@@ -90,9 +160,16 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
             tooltip: 'Edytuj',
             onPressed: _navigateToEdit,
           ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+            tooltip: 'Usuń',
+            onPressed: _isDeleting ? null : _confirmDelete,
+          ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,6 +186,18 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
               _buildQuotaIndicator(storageState),
           ],
         ),
+      ),
+          if (_isDeleting)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.accent,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

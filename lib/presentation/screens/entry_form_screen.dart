@@ -38,6 +38,11 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   bool _isSaving = false;
   bool _isCompressing = false;
   String _compressionStatus = '';
+  bool _isUploading = false;
+  String _uploadStatus = '';
+  double _uploadProgressValue = 0;
+  int _uploadCurrentFile = 0;
+  int _uploadTotalFiles = 0;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -457,21 +462,39 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         await ref.read(entryNotifierProvider.notifier).addEntry(entry);
       }
 
+      setState(() {
+        _isSaving = false;
+        _isUploading = true;
+        _uploadTotalFiles = _mediaPaths.length;
+        _uploadCurrentFile = 0;
+        _uploadProgressValue = 0;
+      });
+
       for (int i = 0; i < _mediaPaths.length; i++) {
+        final fileIndex = i;
         try {
           final storage = ref.read(storageProvider.notifier);
           final ext = _mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
+          setState(() {
+            _uploadCurrentFile = fileIndex + 1;
+            _uploadStatus = 'Wysyłanie ${fileIndex + 1} / ${_mediaPaths.length}...';
+          });
           await storage.uploadMedia(
             file: File(_mediaPaths[i]),
             path: 'media/${entry.uuid}_$i.$ext',
-            onProgress: (_) {},
+            onProgress: (progress) {
+              setState(() {
+                _uploadProgressValue =
+                    (fileIndex + progress.fraction) / _mediaPaths.length;
+              });
+            },
           );
         } catch (e) {
           _showError('Błąd wysyłania pliku ${i + 1}: $e');
         }
       }
 
-      setState(() => _isSaving = false);
+      setState(() => _isUploading = false);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() => _isSaving = false);
@@ -517,7 +540,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: (_isSaving || _isCompressing) ? null : _saveEntry,
+                      onPressed: (_isSaving || _isCompressing || _isUploading) ? null : _saveEntry,
                       child: _isSaving
                           ? const SizedBox(
                               height: 24,
@@ -543,7 +566,66 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             ),
           ),
           if (_isCompressing) _buildCompressionOverlay(),
+          if (_isUploading) _buildUploadOverlay(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUploadOverlay() {
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.all(40),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceDark,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderGlow.withOpacity(0.3)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                height: 32,
+                width: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _uploadStatus,
+                style: GoogleFonts.exo2().copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _uploadProgressValue,
+                  backgroundColor: AppColors.surfaceMedium,
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(AppColors.accent),
+                  minHeight: 6,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$_uploadCurrentFile / $_uploadTotalFiles plików',
+                style: GoogleFonts.jetBrainsMono().copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

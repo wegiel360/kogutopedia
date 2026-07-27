@@ -171,6 +171,15 @@ class StorageNotifier extends StateNotifier<StorageState> {
     }
   }
 
+  Future<void> deleteMedia(String path) async {
+    try {
+      final ref = _storage.ref(path);
+      await ref.delete();
+    } catch (e) {
+      state = state.copyWith(error: '$e');
+    }
+  }
+
   Future<void> refreshQuota() async {
     try {
       state = state.copyWith(quotaLoading: true);
