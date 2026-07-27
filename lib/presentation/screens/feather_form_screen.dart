@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/utils/image_compressor.dart';
 import '../../data/database/kogutopedia_db.dart';
 import '../providers/entry_provider.dart';
 import '../providers/feather_provider.dart';
@@ -41,16 +40,18 @@ class _FeatherFormScreenState extends ConsumerState<FeatherFormScreen> {
 
   Future<void> _pickAndCompressImage() async {
     try {
-      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 80,
+      );
       if (picked == null) return;
 
-      final compressed = await ImageCompressor.compress(
-        input: File(picked.path),
-        outputPath:
-            '${ref.read(databaseProvider).getMediaPath()}/feather_${DateTime.now().millisecondsSinceEpoch}.jpeg',
-      );
-
-      setState(() => _imagePath = compressed.path);
+      final outPath =
+          '${ref.read(databaseProvider).getMediaPath()}/feather_${DateTime.now().millisecondsSinceEpoch}.jpeg';
+      await File(picked.path).copy(outPath);
+      setState(() => _imagePath = outPath);
     } catch (_) {}
   }
 
@@ -194,7 +195,7 @@ class _FeatherFormScreenState extends ConsumerState<FeatherFormScreen> {
               child: OutlinedButton.icon(
                 onPressed: _pickAndCompressImage,
                 icon: const Icon(Icons.camera_alt),
-                label: const Text('Wybierz zdjęcie (WebP)'),
+                label: const Text('Wybierz zdjęcie'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.accent,
                   side: const BorderSide(color: AppColors.borderGlow),

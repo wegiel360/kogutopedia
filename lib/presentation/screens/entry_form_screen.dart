@@ -9,7 +9,6 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/date_utils.dart';
 import '../../core/utils/exif_utils.dart';
-import '../../core/utils/image_compressor.dart';
 import '../../core/utils/video_compressor.dart';
 import '../../domain/entities/entry.dart';
 import '../providers/entry_provider.dart';
@@ -248,20 +247,28 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source);
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 80,
+      );
       if (picked == null) return;
 
       _showCompressionProgress('Wczytywanie daty ze zdjęcia...');
 
-      final exifDate = await ExifUtils.readExifDate(picked.path);
-      if (exifDate != null && widget.existingEntry == null) {
-        setState(() {
-          _entryDate = exifDate;
-          _entryTime = TimeOfDay.fromDateTime(exifDate);
-        });
-      }
+      try {
+        final exifDate = await ExifUtils.readExifDate(picked.path);
+        if (exifDate != null && widget.existingEntry == null) {
+          setState(() {
+            _entryDate = exifDate;
+            _entryTime = TimeOfDay.fromDateTime(exifDate);
+          });
+        }
+      } catch (_) {}
 
       _compressionStatus = 'Przycinanie...';
+      String? resultPath;
       try {
         final cropped = await ImageCropper().cropImage(
           sourcePath: picked.path,
@@ -282,58 +289,14 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             ),
           ],
         );
-        if (cropped == null) {
-          _hideCompressionProgress();
-          return;
-        }
-        _hideCompressionProgress();
+        resultPath = cropped?.path;
+      } catch (_) {}
 
-        final shouldCompress = await _showCompressionChoice(File(cropped.path));
-        if (!shouldCompress) {
-          setState(() {
-            _mediaPath = cropped.path;
-            _mediaType = 'image';
-          });
-          return;
-        }
-
-        _showCompressionProgress('Kompresowanie zdjęcia...');
-        final compressed = await ImageCompressor.compress(input: File(cropped.path));
-        setState(() {
-          _hideCompressionProgress();
-          _mediaPath = compressed.path;
-          _mediaType = 'image';
-        });
-      } catch (_) {
-        _hideCompressionProgress();
-        _hideCompressionProgress();
-
-        if (!mounted) return;
-        final shouldCompress = await _showCompressionChoice(File(picked.path));
-        if (!shouldCompress) {
-          setState(() {
-            _mediaPath = picked.path;
-            _mediaType = 'image';
-          });
-          return;
-        }
-
-        _showCompressionProgress('Kompresowanie zdjęcia...');
-        try {
-          final compressed = await ImageCompressor.compress(input: File(picked.path));
-          setState(() {
-            _hideCompressionProgress();
-            _mediaPath = compressed.path;
-            _mediaType = 'image';
-          });
-        } catch (_) {
-          _hideCompressionProgress();
-          setState(() {
-            _mediaPath = picked.path;
-            _mediaType = 'image';
-          });
-        }
-      }
+      _hideCompressionProgress();
+      setState(() {
+        _mediaPath = resultPath ?? picked.path;
+        _mediaType = 'image';
+      });
     } catch (_) {
       _hideCompressionProgress();
     }
