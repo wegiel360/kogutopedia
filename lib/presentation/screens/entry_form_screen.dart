@@ -194,6 +194,58 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     });
   }
 
+  Future<bool> _showCompressionChoice(File file) async {
+    final sizeMB = await file.length() / (1024 * 1024);
+    final sizeStr = sizeMB.toStringAsFixed(1);
+
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0A1628),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0x8000F0FF), width: 0.5),
+        ),
+        title: const Text('Kompresja multimediów',
+            style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Rozmiar pliku: $sizeStr MB',
+              style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Kompresja zmniejszy rozmiar pliku ale może obniżyć jakość.',
+              style: TextStyle(color: Color(0x80FFFFFF), fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('compress'),
+            child: const Text('Kompresuj',
+                style: TextStyle(color: Color(0xFF00F0FF))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('skip'),
+            child: const Text('Bez kompresji',
+                style: TextStyle(color: Color(0xB3FFFFFF))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('Anuluj',
+                style: TextStyle(color: Color(0x80FFFFFF))),
+          ),
+        ],
+      ),
+    );
+    return result == 'compress';
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(source: source);
@@ -210,37 +262,78 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       }
 
       _compressionStatus = 'Przycinanie...';
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: picked.path,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Kadruj zdjęcie',
-            toolbarColor: AppColors.surfaceDark,
-            toolbarWidgetColor: AppColors.textPrimary,
-            backgroundColor: AppColors.background,
-            initAspectRatio: CropAspectRatioPreset.original,
-            aspectRatioPresets: [
-              CropAspectRatioPreset.square,
-              CropAspectRatioPreset.ratio3x2,
-              CropAspectRatioPreset.original,
-              CropAspectRatioPreset.ratio4x3,
-              CropAspectRatioPreset.ratio16x9,
-            ],
-          ),
-        ],
-      );
-      if (cropped == null) {
+      try {
+        final cropped = await ImageCropper().cropImage(
+          sourcePath: picked.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Kadruj zdjęcie',
+              toolbarColor: AppColors.surfaceDark,
+              toolbarWidgetColor: AppColors.textPrimary,
+              backgroundColor: AppColors.background,
+              initAspectRatio: CropAspectRatioPreset.original,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
+            ),
+          ],
+        );
+        if (cropped == null) {
+          _hideCompressionProgress();
+          return;
+        }
         _hideCompressionProgress();
-        return;
-      }
 
-      _compressionStatus = 'Kompresowanie zdjęcia...';
-      final compressed = await ImageCompressor.compress(input: File(cropped.path));
-      setState(() {
+        final shouldCompress = await _showCompressionChoice(File(cropped.path));
+        if (!shouldCompress) {
+          setState(() {
+            _mediaPath = cropped.path;
+            _mediaType = 'image';
+          });
+          return;
+        }
+
+        _showCompressionProgress('Kompresowanie zdjęcia...');
+        final compressed = await ImageCompressor.compress(input: File(cropped.path));
+        setState(() {
+          _hideCompressionProgress();
+          _mediaPath = compressed.path;
+          _mediaType = 'image';
+        });
+      } catch (_) {
         _hideCompressionProgress();
-        _mediaPath = compressed.path;
-        _mediaType = 'image';
-      });
+        _hideCompressionProgress();
+
+        if (!mounted) return;
+        final shouldCompress = await _showCompressionChoice(File(picked.path));
+        if (!shouldCompress) {
+          setState(() {
+            _mediaPath = picked.path;
+            _mediaType = 'image';
+          });
+          return;
+        }
+
+        _showCompressionProgress('Kompresowanie zdjęcia...');
+        try {
+          final compressed = await ImageCompressor.compress(input: File(picked.path));
+          setState(() {
+            _hideCompressionProgress();
+            _mediaPath = compressed.path;
+            _mediaType = 'image';
+          });
+        } catch (_) {
+          _hideCompressionProgress();
+          setState(() {
+            _mediaPath = picked.path;
+            _mediaType = 'image';
+          });
+        }
+      }
     } catch (_) {
       _hideCompressionProgress();
     }
@@ -253,6 +346,16 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         maxDuration: AppConstants.maxVideoDuration,
       );
       if (picked == null) return;
+
+      _hideCompressionProgress();
+      final shouldCompress = await _showCompressionChoice(File(picked.path));
+      if (!shouldCompress) {
+        setState(() {
+          _mediaPath = picked.path;
+          _mediaType = 'video';
+        });
+        return;
+      }
 
       _showCompressionProgress('Kompresowanie filmu...');
 
@@ -702,14 +805,26 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                   : null,
             ),
             const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: () => setState(() {
-                _mediaPath = null;
-                _mediaType = null;
-              }),
-              icon: const Icon(Icons.delete_outline, size: 18),
-              label: const Text('Usuń media'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: _showImageSourceChooser,
+                    icon: const Icon(Icons.swap_horiz, size: 18),
+                    label: const Text('Zmień media'),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => setState(() {
+                    _mediaPath = null;
+                    _mediaType = null;
+                  }),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('Usuń'),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                ),
+              ],
             ),
           ] else ...[
             Row(

@@ -27,25 +27,45 @@ class StorageState {
   final bool isDownloading;
   final StorageProgress? progress;
   final String? error;
+  final int usedBytes;
+  final int totalQuota;
+  final bool quotaLoading;
 
   const StorageState({
     this.isUploading = false,
     this.isDownloading = false,
     this.progress,
     this.error,
+    this.usedBytes = 0,
+    this.totalQuota = 5 * 1024 * 1024 * 1024,
+    this.quotaLoading = false,
   });
+
+  String get usedMB => '${(usedBytes / (1024 * 1024)).toStringAsFixed(1)}';
+  String get totalMB =>
+      '${(totalQuota / (1024 * 1024)).toStringAsFixed(0)}';
+  String get remainingMB =>
+      '${((totalQuota - usedBytes) / (1024 * 1024)).toStringAsFixed(1)}';
+  double get quotaFraction =>
+      totalQuota > 0 ? usedBytes / totalQuota : 0;
 
   StorageState copyWith({
     bool? isUploading,
     bool? isDownloading,
     StorageProgress? progress,
     String? error,
+    int? usedBytes,
+    int? totalQuota,
+    bool? quotaLoading,
   }) {
     return StorageState(
       isUploading: isUploading ?? this.isUploading,
       isDownloading: isDownloading ?? this.isDownloading,
       progress: progress ?? this.progress,
       error: error,
+      usedBytes: usedBytes ?? this.usedBytes,
+      totalQuota: totalQuota ?? this.totalQuota,
+      quotaLoading: quotaLoading ?? this.quotaLoading,
     );
   }
 }
@@ -136,6 +156,22 @@ class StorageNotifier extends StateNotifier<StorageState> {
     } catch (e) {
       state = state.copyWith(isDownloading: false, error: '$e');
       return null;
+    }
+  }
+
+  Future<void> refreshQuota() async {
+    try {
+      state = state.copyWith(quotaLoading: true);
+      final ref = _storage.ref('media');
+      int total = 0;
+      final result = await ref.listAll();
+      for (final item in result.items) {
+        final meta = await item.getMetadata();
+        total += meta.size ?? 0;
+      }
+      state = state.copyWith(usedBytes: total, quotaLoading: false);
+    } catch (_) {
+      state = state.copyWith(quotaLoading: false);
     }
   }
 

@@ -29,6 +29,9 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
     if (widget.entry.isVideo && widget.entry.hasMedia) {
       _initVideo();
     }
+    Future.microtask(() {
+      ref.read(storageProvider.notifier).refreshQuota();
+    });
   }
 
   void _initVideo() {
@@ -102,6 +105,8 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
             const SizedBox(height: 20),
             if (storageState.isUploading || storageState.isDownloading)
               _buildStorageProgress(storageState),
+            if (!storageState.quotaLoading)
+              _buildQuotaIndicator(storageState),
           ],
         ),
       ),
@@ -134,7 +139,16 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
                 ),
               )
             else if (_isVideoInitialized && _videoController != null)
-              VideoPlayer(_videoController!)
+              ClipRect(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: _videoController!.value.size.width,
+                    height: _videoController!.value.size.height,
+                    child: VideoPlayer(_videoController!),
+                  ),
+                ),
+              )
             else
               const Icon(
                 Icons.play_circle_outline,
@@ -255,6 +269,72 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
                   ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuotaIndicator(StorageState state) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.glass,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderGlow.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cloud, color: AppColors.accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Firebase Storage',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: state.quotaFraction,
+              backgroundColor: AppColors.surfaceMedium,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                state.quotaFraction > 0.8
+                    ? AppColors.error
+                    : state.quotaFraction > 0.5
+                        ? AppColors.warning
+                        : AppColors.accent,
+              ),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Użyte: ${state.usedMB} MB',
+                style: GoogleFonts.jetBrainsMono().copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+              Text(
+                'Wolne: ${state.remainingMB} MB',
+                style: GoogleFonts.jetBrainsMono().copyWith(
+                  color: AppColors.accent,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -410,7 +490,16 @@ class _FullScreenMediaState extends State<_FullScreenMedia> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          VideoPlayer(_videoController!),
+          ClipRect(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: _videoController!.value.size.width,
+                height: _videoController!.value.size.height,
+                child: VideoPlayer(_videoController!),
+              ),
+            ),
+          ),
           if (!_videoController!.value.isPlaying)
             const Icon(
               Icons.play_circle,
