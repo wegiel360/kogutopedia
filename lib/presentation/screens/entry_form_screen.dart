@@ -443,54 +443,63 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
 
     setState(() => _isSaving = true);
 
-    final characterName = _isCustomCharacter
-        ? _customCharacterController.text.trim()
-        : _selectedCharacter;
+    try {
+      final characterName = _isCustomCharacter
+          ? _customCharacterController.text.trim()
+          : _selectedCharacter;
 
-    if (characterName.isEmpty) {
-      setState(() => _isSaving = false);
-      return;
-    }
+      if (characterName.isEmpty) {
+        setState(() => _isSaving = false);
+        return;
+      }
 
-    final entryDate = DateTime(
-      _entryDate.year,
-      _entryDate.month,
-      _entryDate.day,
-      _entryTime.hour,
-      _entryTime.minute,
-    );
-
-    final entry = Entry(
-      uuid: widget.existingEntry?.uuid ?? _uuid.v4(),
-      createdAt: widget.existingEntry?.createdAt ?? DateTime.now(),
-      entryDate: entryDate,
-      characterName: characterName,
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-      mediaPaths: _mediaPaths,
-      mediaTypes: _mediaTypes,
-    );
-
-    if (widget.existingEntry != null) {
-      await ref.read(entryRepositoryProvider).updateEntry(entry);
-    } else {
-      await ref.read(entryNotifierProvider.notifier).addEntry(entry);
-    }
-
-    for (int i = 0; i < _mediaPaths.length; i++) {
-      final storage = ref.read(storageProvider.notifier);
-      final ext = _mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
-      storage.uploadMedia(
-        file: File(_mediaPaths[i]),
-        path: 'media/${entry.uuid}_$i.$ext',
-        onProgress: (_) {},
+      final entryDate = DateTime(
+        _entryDate.year,
+        _entryDate.month,
+        _entryDate.day,
+        _entryTime.hour,
+        _entryTime.minute,
       );
-    }
 
-    setState(() => _isSaving = false);
-    if (mounted) Navigator.of(context).pop();
+      final entry = Entry(
+        uuid: widget.existingEntry?.uuid ?? _uuid.v4(),
+        createdAt: widget.existingEntry?.createdAt ?? DateTime.now(),
+        entryDate: entryDate,
+        characterName: characterName,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        mediaPaths: _mediaPaths,
+        mediaTypes: _mediaTypes,
+      );
+
+      if (widget.existingEntry != null) {
+        await ref.read(entryRepositoryProvider).updateEntry(entry);
+      } else {
+        await ref.read(entryNotifierProvider.notifier).addEntry(entry);
+      }
+
+      for (int i = 0; i < _mediaPaths.length; i++) {
+        try {
+          final storage = ref.read(storageProvider.notifier);
+          final ext = _mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
+          await storage.uploadMedia(
+            file: File(_mediaPaths[i]),
+            path: 'media/${entry.uuid}_$i.$ext',
+            onProgress: (_) {},
+          );
+        } catch (e) {
+          _showError('Błąd wysyłania pliku ${i + 1}: $e');
+        }
+      }
+
+      setState(() => _isSaving = false);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() => _isSaving = false);
+      _showError('Nie udało się zapisać wpisu: $e');
+    }
   }
 
   @override
