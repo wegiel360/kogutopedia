@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,12 +34,19 @@ void main() async {
     update = await AppUpdater.checkForUpdate();
   } catch (_) {}
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        databaseProvider.overrideWithValue(database),
-      ],
-      child: KogutopediaApp(pendingUpdate: update),
-    ),
+  runZonedGuarded(
+    () {
+      runApp(
+        ProviderScope(
+          overrides: [
+            databaseProvider.overrideWithValue(database),
+          ],
+          child: KogutopediaApp(pendingUpdate: update),
+        ),
+      );
+    },
+    (error, stack) {
+      debugPrint('Unhandled error: $error\n$stack');
+    },
   );
 }

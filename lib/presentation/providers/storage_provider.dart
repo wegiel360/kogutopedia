@@ -91,22 +91,28 @@ class StorageNotifier extends StateNotifier<StorageState> {
       int lastBytes = 0;
       DateTime lastTime = DateTime.now();
 
-      task.snapshotEvents.listen((snapshot) {
-        final now = DateTime.now();
-        final elapsed = now.difference(lastTime).inMilliseconds / 1000;
-        final transferred = snapshot.bytesTransferred;
-        final speed = elapsed > 0
-            ? (transferred - lastBytes) / (1024 * 1024) / elapsed
-            : 0.0;
-        lastBytes = transferred;
-        lastTime = now;
+      task.snapshotEvents.listen(
+        (snapshot) {
+          final now = DateTime.now();
+          final elapsed = now.difference(lastTime).inMilliseconds / 1000;
+          final transferred = snapshot.bytesTransferred;
+          final speed = elapsed > 0
+              ? (transferred - lastBytes) / (1024 * 1024) / elapsed
+              : 0.0;
+          lastBytes = transferred;
+          lastTime = now;
 
-        onProgress(StorageProgress(
-          bytesTransferred: transferred,
-          totalBytes: snapshot.totalBytes,
-          speedMBps: speed,
-        ));
-      });
+          onProgress(StorageProgress(
+            bytesTransferred: transferred,
+            totalBytes: snapshot.totalBytes,
+            speedMBps: speed,
+          ));
+        },
+        onError: (error) {
+          state = state.copyWith(isUploading: false, error: '$error');
+        },
+        cancelOnError: true,
+      );
 
       await task;
       final url = await ref.getDownloadURL();
@@ -133,22 +139,28 @@ class StorageNotifier extends StateNotifier<StorageState> {
       int lastBytes = 0;
       DateTime lastTime = DateTime.now();
 
-      task.snapshotEvents.listen((snapshot) {
-        final now = DateTime.now();
-        final elapsed = now.difference(lastTime).inMilliseconds / 1000;
-        final transferred = snapshot.bytesTransferred;
-        final speed = elapsed > 0
-            ? (transferred - lastBytes) / (1024 * 1024) / elapsed
-            : 0.0;
-        lastBytes = transferred;
-        lastTime = now;
+      task.snapshotEvents.listen(
+        (snapshot) {
+          final now = DateTime.now();
+          final elapsed = now.difference(lastTime).inMilliseconds / 1000;
+          final transferred = snapshot.bytesTransferred;
+          final speed = elapsed > 0
+              ? (transferred - lastBytes) / (1024 * 1024) / elapsed
+              : 0.0;
+          lastBytes = transferred;
+          lastTime = now;
 
-        onProgress(StorageProgress(
-          bytesTransferred: transferred,
-          totalBytes: snapshot.totalBytes,
-          speedMBps: speed,
-        ));
-      });
+          onProgress(StorageProgress(
+            bytesTransferred: transferred,
+            totalBytes: snapshot.totalBytes,
+            speedMBps: speed,
+          ));
+        },
+        onError: (error) {
+          state = state.copyWith(isDownloading: false, error: '$error');
+        },
+        cancelOnError: true,
+      );
 
       await task;
       state = state.copyWith(isDownloading: false);
