@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import '../constants/app_colors.dart';
 
 class UpdateInfo {
   final String tagName;
@@ -56,7 +55,8 @@ class AppUpdater {
         body: data['body'] as String? ?? '',
         downloadUrl: downloadUrl,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('AppUpdater.checkForUpdate error: $e');
       return null;
     }
   }

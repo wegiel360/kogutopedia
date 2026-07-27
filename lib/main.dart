@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'app.dart';
 import 'data/database/kogutopedia_db.dart';
 import 'firebase_options.dart';
@@ -12,6 +13,10 @@ import 'core/utils/updater.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    debugPrint('Flutter error: ${details.exception}\n${details.stack}');
+  };
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -26,13 +31,19 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+  );
+
   final database = await KogutopediaDatabase.getInstance();
   await SloganLoader.load();
 
   UpdateInfo? update;
   try {
     update = await AppUpdater.checkForUpdate();
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('Update check error: $e');
+  }
 
   runZonedGuarded(
     () {

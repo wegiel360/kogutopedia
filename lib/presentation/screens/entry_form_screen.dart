@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
@@ -10,6 +12,7 @@ import '../../core/utils/date_utils.dart';
 import '../../core/utils/exif_utils.dart';
 import '../../core/utils/video_compressor.dart';
 import '../../domain/entities/entry.dart';
+import '../providers/achievement_provider.dart';
 import '../providers/entry_provider.dart';
 import '../providers/storage_provider.dart';
 
@@ -174,6 +177,19 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   }
 
   Future<File> _compressSingleImage(File file) async {
+    try {
+      final mediaPath = ref.read(databaseProvider).getMediaPath();
+      final outPath = '$mediaPath/img_${DateTime.now().millisecondsSinceEpoch}.jpeg';
+      final bytes = await file.readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded != null) {
+        final compressed = img.encodeJpg(decoded, quality: 80);
+        await File(outPath).writeAsBytes(compressed);
+        return File(outPath);
+      }
+    } catch (e) {
+      debugPrint('Compression error, using original: $e');
+    }
     return file;
   }
 
@@ -192,8 +208,13 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         _showCompressionProgress('Przetwarzanie ${picked.length} zdjęć...');
         for (int i = 0; i < picked.length; i++) {
           _compressionStatus = 'Przetwarzanie ${i + 1} / ${picked.length}...';
-          paths.add(picked[i].path);
+          final original = File(picked[i].path);
+          final compressed = await _compressSingleImage(original);
+          paths.add(compressed.path);
           types.add('image');
+          if (compressed.path != original.path) {
+            unawaited(original.delete());
+          }
         }
         _hideCompressionProgress();
 
@@ -206,34 +227,36 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 _entryTime = TimeOfDay.fromDateTime(exifDate);
               });
             }
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('EXIF read error (multi pick): $e');
+          }
         }
       }
 
       final addVideo = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0A1628),
+          backgroundColor: AppColors.surfaceDark,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0x8000F0FF), width: 0.5),
+            side: const BorderSide(color: AppColors.borderGlow, width: 0.5),
           ),
-          title: const Text('Dodaj film?',
-              style: TextStyle(color: Colors.white)),
-          content: const Text(
-            'Czy chcesz dodać również film z galerii?',
-            style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+        title: const Text('Dodaj film?',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'Czy chcesz dodać również film z galerii?',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('Nie',
-                  style: TextStyle(color: Color(0x80FFFFFF))),
+                  style: TextStyle(color: AppColors.textMuted)),
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
               child: const Text('Tak',
-                  style: TextStyle(color: Color(0xFF00F0FF))),
+                  style: TextStyle(color: AppColors.accent)),
             ),
           ],
         ),
@@ -245,7 +268,12 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           final shouldCompress = await _showCompressionChoice(File(video.path));
           if (shouldCompress) {
             _showCompressionProgress('Kompresowanie filmu...');
-            final compressed = await VideoCompressor.compress(File(video.path));
+            final compressed = await VideoCompressor.compress(
+              File(video.path),
+              onProgress: (p) {
+                setState(() => _compressionStatus = 'Kompresja filmu: $p%');
+              },
+            );
             _hideCompressionProgress();
             if (compressed != null) {
               final newSizeMB = (await compressed.length()) / (1024 * 1024);
@@ -302,11 +330,17 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             _entryTime = TimeOfDay.fromDateTime(exifDate);
           });
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('EXIF read error (single pick): $e');
+      }
 
-      final file = await _compressSingleImage(File(picked.path));
+      final original = File(picked.path);
+      final file = await _compressSingleImage(original);
 
       _hideCompressionProgress();
+      if (file.path != original.path) {
+        unawaited(original.delete());
+      }
       setState(() {
         _mediaPaths.add(file.path);
         _mediaTypes.add('image');
@@ -371,25 +405,25 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A1628),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0x8000F0FF), width: 0.5),
+          side: const BorderSide(color: AppColors.borderGlow, width: 0.5),
         ),
         title: const Text('Kompresja multimediów',
-            style: TextStyle(color: Colors.white)),
+            style: TextStyle(color: AppColors.textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Rozmiar pliku: $sizeStr MB',
-              style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 12),
             const Text(
               'Kompresja zmniejszy rozmiar pliku ale może obniżyć jakość.',
-              style: TextStyle(color: Color(0x80FFFFFF), fontSize: 13),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
           ],
         ),
@@ -397,17 +431,17 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('compress'),
             child: const Text('Kompresuj',
-                style: TextStyle(color: Color(0xFF00F0FF))),
+                style: TextStyle(color: AppColors.accent)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('skip'),
             child: const Text('Bez kompresji',
-                style: TextStyle(color: Color(0xB3FFFFFF))),
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('cancel'),
             child: const Text('Anuluj',
-                style: TextStyle(color: Color(0x80FFFFFF))),
+                style: TextStyle(color: AppColors.textMuted)),
           ),
         ],
       ),
@@ -497,6 +531,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         await ref.read(entryRepositoryProvider).updateEntry(entry);
       } else {
         await ref.read(entryNotifierProvider.notifier).addEntry(entry);
+        unawaited(ref.read(achievementNotifierProvider.notifier).checkAndUnlockAchievements());
+        unawaited(ref.read(achievementNotifierProvider.notifier).completeDailyChallenge());
       }
 
       setState(() {
@@ -507,9 +543,10 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         _uploadProgressValue = 0;
       });
 
+      final existingPaths = widget.existingEntry?.mediaPaths ?? [];
       final newUploadPaths = <int>[];
       for (int i = 0; i < _mediaPaths.length; i++) {
-        if (File(_mediaPaths[i]).existsSync()) {
+        if (await File(_mediaPaths[i]).exists() && !existingPaths.contains(_mediaPaths[i])) {
           newUploadPaths.add(i);
         }
       }
@@ -556,13 +593,17 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final bool isBusy = _isSaving || _isCompressing || _isUploading;
+    return PopScope(
+      canPop: !isBusy,
+      child: Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: isBusy ? null : () => Navigator.of(context).pop(),
         ),
         title: Text(
           widget.existingEntry != null ? 'Edytuj wpis' : 'Nowy wpis',
@@ -620,6 +661,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           if (_isCompressing) _buildCompressionOverlay(),
           if (_isUploading) _buildUploadOverlay(),
         ],
+      ),
       ),
     );
   }
@@ -1028,7 +1070,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 color: AppColors.error,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close, color: Colors.white, size: 14),
+              child: const Icon(Icons.close, color: AppColors.textPrimary, size: 14),
             ),
           ),
         ),

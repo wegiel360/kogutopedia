@@ -9,7 +9,7 @@ import '../../domain/usecases/get_statistics.dart';
 import 'entry_provider.dart';
 
 final achievementRepositoryProvider = Provider<AchievementRepository>((ref) {
-  final db = ref.watch(databaseProvider);
+  final db = ref.read(databaseProvider);
   return AchievementRepositoryImpl(db);
 });
 

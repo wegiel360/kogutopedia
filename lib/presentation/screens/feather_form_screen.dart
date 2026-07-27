@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
-import '../../data/database/kogutopedia_db.dart';
 import '../providers/entry_provider.dart';
 import '../providers/feather_provider.dart';
 
@@ -52,7 +51,17 @@ class _FeatherFormScreenState extends ConsumerState<FeatherFormScreen> {
           '${ref.read(databaseProvider).getMediaPath()}/feather_${DateTime.now().millisecondsSinceEpoch}.jpeg';
       await File(picked.path).copy(outPath);
       setState(() => _imagePath = outPath);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Błąd wyboru zdjęcia: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _save() async {

@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/utils/pluralize.dart';
+import '../../domain/entities/feather.dart';
 import '../providers/feather_provider.dart';
 import 'feather_form_screen.dart';
 
@@ -30,7 +31,7 @@ class FeatherGridScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${state.feathers.length} ${_pluralize(state.feathers.length, 'piór', 'pióra', 'piór')}',
+                      '${state.feathers.length} ${pluralize(state.feathers.length, 'piór', 'pióra', 'piór')}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -163,18 +164,10 @@ class FeatherGridScreen extends ConsumerWidget {
     );
   }
 
-  String _pluralize(int count, String plural, String singular, String genitive) {
-    if (count == 1) return singular;
-    if (count % 10 >= 2 && count % 10 <= 4 &&
-        (count % 100 < 10 || count % 100 >= 20)) {
-      return genitive;
-    }
-    return plural;
-  }
 }
 
 class _FeatherCard extends StatelessWidget {
-  final dynamic feather;
+  final Feather feather;
   final VoidCallback onDelete;
 
   const _FeatherCard({
@@ -254,7 +247,7 @@ class _FeatherCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           hasCharacter
-                              ? feather.characterName
+                              ? feather.characterName!
                               : 'Nie wiadomo',
                           style: const TextStyle(
                             color: AppColors.textMuted,

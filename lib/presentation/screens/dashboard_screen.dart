@@ -55,10 +55,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: _pages[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -164,6 +161,7 @@ class _DashboardContent extends ConsumerWidget {
         slivers: [
           _buildHeader(context, ref, statsState, achievementState),
           _buildMotivationBar(context, entryState),
+          _buildSearchBar(context, ref),
           if (entryState.entries.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
@@ -522,6 +520,31 @@ class _DashboardContent extends ConsumerWidget {
               }).toList(),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context, WidgetRef ref) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: TextField(
+          decoration: InputDecoration(
+            hintText: 'Szukaj wpisów...',
+            prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+            filled: true,
+            fillColor: AppColors.glass,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            hintStyle: const TextStyle(color: AppColors.textMuted),
+          ),
+          style: const TextStyle(color: AppColors.textPrimary),
+          onChanged: (query) {
+            ref.read(entryNotifierProvider.notifier).setSearchQuery(query);
+          },
         ),
       ),
     );

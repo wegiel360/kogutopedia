@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 class SloganLoader {
@@ -9,6 +10,8 @@ class SloganLoader {
     try {
       final text = await rootBundle.loadString('assets/slogan.txt');
       _slogan = text.trim();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('SloganLoader.load error: $e');
+    }
   }
 }

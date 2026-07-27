@@ -143,7 +143,22 @@ class EntryRepositoryImpl implements EntryRepository {
       for (final entry in tomekEntries) {
         uniqueDays.add(entry.dateKey);
       }
-      return uniqueDays.length;
+      final sorted = uniqueDays.toList()..sort();
+      if (sorted.isEmpty) return 0;
+      final today = DateTime.now();
+      final todayKey = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      if (sorted.last != todayKey) return 0;
+      int streak = 0;
+      for (int i = sorted.length - 1; i >= 0; i--) {
+        final expected = DateTime.now().subtract(Duration(days: streak));
+        final expectedKey = '${expected.year}-${expected.month.toString().padLeft(2, '0')}-${expected.day.toString().padLeft(2, '0')}';
+        if (sorted[i] == expectedKey) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      return streak;
     } catch (e) {
       throw DatabaseException('Failed to calculate streak: $e');
     }

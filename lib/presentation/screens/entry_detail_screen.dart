@@ -22,7 +22,6 @@ class EntryDetailScreen extends ConsumerStatefulWidget {
 class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
-  bool _showStorageProgress = false;
   bool _isDeleting = false;
 
   @override
@@ -36,9 +35,11 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
     });
   }
 
-  void _initVideo() {
-    final file = File(widget.entry.primaryMediaPath!);
-    if (!file.existsSync()) return;
+  Future<void> _initVideo() async {
+    final path = widget.entry.primaryMediaPath;
+    if (path == null) return;
+    final file = File(path);
+    if (!await file.exists()) return;
     _videoController = VideoPlayerController.file(file)
       ..initialize().then((_) {
         if (mounted) {
@@ -62,11 +63,12 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
   }
 
   void _showMediaFullscreen() {
-    if (!widget.entry.hasMedia) return;
+    final path = widget.entry.primaryMediaPath;
+    if (path == null) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => _FullScreenMedia(
-          path: widget.entry.primaryMediaPath!,
+          path: path,
           isVideo: widget.entry.isVideo,
         ),
       ),
@@ -77,29 +79,29 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A1628),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0x8000F0FF), width: 0.5),
+          side: const BorderSide(color: AppColors.borderGlow, width: 0.5),
         ),
         title: const Text(
           'Usuń wpis',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppColors.textPrimary),
         ),
         content: const Text(
           'Czy na pewno chcesz usunąć ten wpis? Multimedia zostaną również usunięte z Firebase Storage.',
-          style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Anuluj',
-                style: TextStyle(color: Color(0x80FFFFFF))),
+                style: TextStyle(color: AppColors.textMuted)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Usuń',
-                style: TextStyle(color: Color(0xFFFF5252))),
+                style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -120,7 +122,17 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
         try {
           final ext = entry.mediaTypes.length > i && entry.mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
           await storage.deleteMedia('media/${entry.uuid}_$i.$ext');
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Firebase deletion error for media $i: $e');
+        }
+        try {
+          final localFile = File(entry.mediaPaths[i]);
+          if (await localFile.exists()) {
+            await localFile.delete();
+          }
+        } catch (e) {
+          debugPrint('Local file deletion error for media $i: $e');
+        }
       }
 
       await ref.read(entryNotifierProvider.notifier).deleteEntry(entry.uuid);

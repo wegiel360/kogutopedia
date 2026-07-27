@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class StorageProgress {
@@ -90,10 +91,13 @@ class StorageNotifier extends StateNotifier<StorageState> {
 
       int lastBytes = 0;
       DateTime lastTime = DateTime.now();
+      DateTime lastProgress = DateTime.now();
 
-      task.snapshotEvents.listen(
+      _uploadSub = task.snapshotEvents.listen(
         (snapshot) {
           final now = DateTime.now();
+          if (now.difference(lastProgress).inMilliseconds < 100) return;
+          lastProgress = now;
           final elapsed = now.difference(lastTime).inMilliseconds / 1000;
           final transferred = snapshot.bytesTransferred;
           final speed = elapsed > 0
@@ -117,6 +121,7 @@ class StorageNotifier extends StateNotifier<StorageState> {
       await task;
       final url = await ref.getDownloadURL();
       state = state.copyWith(isUploading: false);
+      refreshQuota();
       return url;
     } catch (e) {
       state = state.copyWith(isUploading: false, error: '$e');
@@ -138,10 +143,13 @@ class StorageNotifier extends StateNotifier<StorageState> {
 
       int lastBytes = 0;
       DateTime lastTime = DateTime.now();
+      DateTime lastProgress = DateTime.now();
 
-      task.snapshotEvents.listen(
+      _downloadSub = task.snapshotEvents.listen(
         (snapshot) {
           final now = DateTime.now();
+          if (now.difference(lastProgress).inMilliseconds < 100) return;
+          lastProgress = now;
           final elapsed = now.difference(lastTime).inMilliseconds / 1000;
           final transferred = snapshot.bytesTransferred;
           final speed = elapsed > 0
@@ -175,6 +183,7 @@ class StorageNotifier extends StateNotifier<StorageState> {
     try {
       final ref = _storage.ref(path);
       await ref.delete();
+      refreshQuota();
     } catch (e) {
       state = state.copyWith(error: '$e');
     }
@@ -191,7 +200,8 @@ class StorageNotifier extends StateNotifier<StorageState> {
         total += meta.size ?? 0;
       }
       state = state.copyWith(usedBytes: total, quotaLoading: false);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('StorageNotifier.refreshQuota error: $e');
       state = state.copyWith(quotaLoading: false);
     }
   }

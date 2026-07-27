@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:exif/exif.dart' as exif;
+import 'package:flutter/foundation.dart';
 
 class ExifUtils {
   ExifUtils._();
@@ -29,7 +30,8 @@ class ExifUtils {
 
       final stat = await file.stat();
       return stat.modified;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ExifUtils.readExifDate error: $e');
       return null;
     }
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,9 +30,10 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final FirebaseAuth _auth;
+  StreamSubscription<User?>? _authSub;
 
   AuthNotifier(this._auth) : super(const AuthState()) {
-    _auth.authStateChanges().listen(_onAuthStateChanged);
+    _authSub = _auth.authStateChanges().listen(_onAuthStateChanged);
   }
 
   void _onAuthStateChanged(User? user) {
@@ -109,12 +111,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signOut() async {
-    await _auth.signOut();
-    state = const AuthState();
+    try {
+      await _auth.signOut();
+      state = const AuthState();
+    } catch (e) {
+      state = state.copyWith(error: 'Błąd wylogowania: $e');
+    }
   }
 
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 }
 

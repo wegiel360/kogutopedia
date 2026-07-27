@@ -101,7 +101,7 @@ class EntryNotifier extends StateNotifier<EntryState> {
   Future<Entry?> addEntry(Entry entry) async {
     try {
       final added = await _addEntry(entry);
-      await loadEntries();
+      state = state.copyWith(entries: [...state.entries, added]);
       return added;
     } catch (e) {
       state = state.copyWith(
@@ -114,7 +114,9 @@ class EntryNotifier extends StateNotifier<EntryState> {
   Future<void> deleteEntry(String uuid) async {
     try {
       await _repository.deleteEntry(uuid);
-      await loadEntries();
+      state = state.copyWith(
+        entries: state.entries.where((e) => e.uuid != uuid).toList(),
+      );
     } catch (e) {
       state = state.copyWith(
         error: e is AppException ? e.message : 'Nie udało się usunąć wpisu',

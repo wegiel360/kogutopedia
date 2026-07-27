@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/pluralize.dart';
 import '../../domain/entities/entry.dart';
 import '../providers/entry_provider.dart';
-import '../widgets/glass_card.dart';
 
 class GalleryScreen extends ConsumerWidget {
   const GalleryScreen({super.key});
@@ -34,7 +34,7 @@ class GalleryScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${mediaEntries.length} ${_pluralize(mediaEntries.length, 'multimediów', 'multimediów', 'multimediów')}',
+                      '${mediaEntries.length} ${pluralize(mediaEntries.length, 'multimediów', 'multimediów', 'multimediów')}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -183,12 +183,4 @@ class GalleryScreen extends ConsumerWidget {
     );
   }
 
-  String _pluralize(int count, String singular, String plural, String genitive) {
-    if (count == 1) return singular;
-    if (count % 10 >= 2 && count % 10 <= 4 &&
-        (count % 100 < 10 || count % 100 >= 20)) {
-      return genitive;
-    }
-    return plural;
-  }
 }

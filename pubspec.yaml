@@ -1,7 +1,7 @@
 name: kogutopedia
 description: Dziennik domowego dróbku - Kogutopedia
 publish_to: 'none'
-version: 0.0.2-alpha
+version: 0.0.9-alpha
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -12,7 +12,6 @@ dependencies:
   flutter_riverpod: ^2.4.0
   path_provider: ^2.1.1
   image_picker: ^1.0.4
-  image_cropper: 12.2.1
   intl: ^0.18.1
   google_fonts: ^6.1.0
   uuid: ^4.2.1
@@ -23,8 +22,10 @@ dependencies:
   url_launcher: ^6.3.2
   video_compress: ^3.1.4
   firebase_storage: ^13.4.5
+  firebase_app_check: ^0.4.5
   video_player: ^2.11.1
   exif: ^3.3.0
+  image: ^4.2.0
 
 dev_dependencies:
   flutter_test:
