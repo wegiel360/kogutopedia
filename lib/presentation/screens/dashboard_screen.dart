@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/date_utils.dart';
 import '../../core/utils/slogan_loader.dart';
+import '../../domain/entities/entry.dart';
 import '../providers/achievement_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
@@ -16,6 +17,7 @@ import '../widgets/responsive_layout.dart';
 import '../widgets/streak_indicator.dart';
 import '../providers/feather_provider.dart';
 import 'achievements_screen.dart';
+import 'entry_detail_screen.dart';
 import 'entry_form_screen.dart';
 import 'feather_grid_screen.dart';
 import 'gallery_screen.dart';
@@ -122,6 +124,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void _navigateToForm(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const EntryFormScreen()),
+    );
+  }
+
+  void _navigateToDetail(BuildContext context, Entry entry) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EntryDetailScreen(entry: entry),
+      ),
     );
   }
 }
@@ -525,7 +535,7 @@ class _DashboardContent extends ConsumerWidget {
           final entry = entries[index];
           return EntryCard(
             entry: entry,
-            onTap: () {},
+            onTap: () => _openEntry(context, entry),
           );
         },
         childCount: entries.length,
@@ -549,11 +559,19 @@ class _DashboardContent extends ConsumerWidget {
             final entry = entries[index];
             return EntryCard(
               entry: entry,
-              onTap: () {},
+              onTap: () => _openEntry(context, entry),
             );
           },
           childCount: entries.length,
         ),
+      ),
+    );
+  }
+
+  void _openEntry(BuildContext context, Entry entry) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EntryDetailScreen(entry: entry),
       ),
     );
   }

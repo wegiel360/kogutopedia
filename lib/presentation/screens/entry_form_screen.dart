@@ -13,6 +13,7 @@ import '../../core/utils/image_compressor.dart';
 import '../../core/utils/video_compressor.dart';
 import '../../domain/entities/entry.dart';
 import '../providers/entry_provider.dart';
+import '../providers/storage_provider.dart';
 
 class EntryFormScreen extends ConsumerStatefulWidget {
   final Entry? existingEntry;
@@ -37,6 +38,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   String? _mediaType;
   bool _isCustomCharacter = false;
   bool _isSaving = false;
+  bool _isCompressing = false;
+  String _compressionStatus = '';
 
   final ImagePicker _picker = ImagePicker();
 
@@ -177,10 +180,26 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     );
   }
 
+  void _showCompressionProgress(String status) {
+    setState(() {
+      _isCompressing = true;
+      _compressionStatus = status;
+    });
+  }
+
+  void _hideCompressionProgress() {
+    setState(() {
+      _isCompressing = false;
+      _compressionStatus = '';
+    });
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(source: source);
       if (picked == null) return;
+
+      _showCompressionProgress('Wczytywanie daty ze zdjęcia...');
 
       final exifDate = await ExifUtils.readExifDate(picked.path);
       if (exifDate != null && widget.existingEntry == null) {
@@ -190,6 +209,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         });
       }
 
+      _compressionStatus = 'Przycinanie...';
       final cropped = await ImageCropper().cropImage(
         sourcePath: picked.path,
         uiSettings: [
@@ -209,14 +229,21 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           ),
         ],
       );
-      if (cropped == null) return;
+      if (cropped == null) {
+        _hideCompressionProgress();
+        return;
+      }
 
+      _compressionStatus = 'Kompresowanie zdjęcia...';
       final compressed = await ImageCompressor.compress(input: File(cropped.path));
       setState(() {
+        _hideCompressionProgress();
         _mediaPath = compressed.path;
         _mediaType = 'image';
       });
-    } catch (_) {}
+    } catch (_) {
+      _hideCompressionProgress();
+    }
   }
 
   Future<void> _pickVideo(ImageSource source) async {
@@ -227,17 +254,17 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       );
       if (picked == null) return;
 
-      setState(() => _isSaving = true);
+      _showCompressionProgress('Kompresowanie filmu...');
 
       final compressed = await VideoCompressor.compress(File(picked.path));
 
       setState(() {
-        _isSaving = false;
+        _hideCompressionProgress();
         _mediaPath = compressed?.path ?? picked.path;
         _mediaType = 'video';
       });
     } catch (_) {
-      setState(() => _isSaving = false);
+      _hideCompressionProgress();
     }
   }
 
@@ -324,6 +351,16 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       await ref.read(entryNotifierProvider.notifier).addEntry(entry);
     }
 
+    if (_mediaPath != null) {
+      final storage = ref.read(storageProvider.notifier);
+      final ext = _mediaType == 'video' ? 'mp4' : 'jpg';
+      storage.uploadMedia(
+        file: File(_mediaPath!),
+        path: 'media/${entry.uuid}.$ext',
+        onProgress: (_) {},
+      );
+    }
+
     setState(() => _isSaving = false);
     if (mounted) Navigator.of(context).pop();
   }
@@ -343,47 +380,91 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 20),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDateTimeSection(),
+                  const SizedBox(height: 20),
+                  _buildCharacterSection(),
+                  const SizedBox(height: 20),
+                  _buildTitleField(),
+                  const SizedBox(height: 20),
+                  _buildDescriptionField(),
+                  const SizedBox(height: 20),
+                  _buildMediaSection(),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: (_isSaving || _isCompressing) ? null : _saveEntry,
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.accent,
+                              ),
+                            )
+                          : Text(
+                              widget.existingEntry != null
+                                  ? 'Zapisz zmiany'
+                                  : 'Dodaj wpis',
+                              style: GoogleFonts.exo2().copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isCompressing) _buildCompressionOverlay(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompressionOverlay() {
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.all(40),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceDark,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderGlow.withOpacity(0.3)),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDateTimeSection(),
-              const SizedBox(height: 20),
-              _buildCharacterSection(),
-              const SizedBox(height: 20),
-              _buildTitleField(),
-              const SizedBox(height: 20),
-              _buildDescriptionField(),
-              const SizedBox(height: 20),
-              _buildMediaSection(),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveEntry,
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.accent,
-                          ),
-                        )
-                      : Text(
-                          widget.existingEntry != null
-                              ? 'Zapisz zmiany'
-                              : 'Dodaj wpis',
-                          style: GoogleFonts.exo2().copyWith(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+              const SizedBox(
+                height: 32,
+                width: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.accent,
                 ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _compressionStatus,
+                style: GoogleFonts.exo2().copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
