@@ -89,7 +89,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     );
   }
 
-  void _showImageSourceChooser() {
+  void _showMediaSourceChooser() {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceDark,
@@ -110,53 +110,18 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Dodaj zdjęcia', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+              Text('Dodaj multimedia', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
               const SizedBox(height: 20),
               _sourceOption(
                 icon: Icons.photo_library,
-                label: 'Z galerii (wiele)',
-                onTap: () { Navigator.of(ctx).pop(); _pickMultipleImages(); },
+                label: 'Z galerii',
+                onTap: () { Navigator.of(ctx).pop(); _pickMultipleMedia(); },
               ),
               const SizedBox(height: 8),
               _sourceOption(
                 icon: Icons.camera_alt,
                 label: 'Zrób zdjęcie',
                 onTap: () { Navigator.of(ctx).pop(); _pickSingleImage(); },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showVideoSourceChooser() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textMuted,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('Dodaj film', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
-              const SizedBox(height: 20),
-              _sourceOption(
-                icon: Icons.photo_library,
-                label: 'Z galerii',
-                onTap: () { Navigator.of(ctx).pop(); _pickVideo(ImageSource.gallery); },
               ),
               const SizedBox(height: 8),
               _sourceOption(
@@ -212,33 +177,66 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     return file;
   }
 
-  Future<void> _pickMultipleImages() async {
+  Future<void> _pickMultipleMedia() async {
     try {
-      final picked = await _picker.pickMultiImage(
+      final picked = await _picker.pickMultipleMedia(
         maxWidth: 1920,
         maxHeight: 1920,
         imageQuality: 80,
       );
       if (picked.isEmpty) return;
 
-      _showCompressionProgress('Przetwarzanie ${picked.length} zdjęć...');
+      _showCompressionProgress('Przetwarzanie ${picked.length} plików...');
 
       final paths = <String>[];
+      final types = <String>[];
+
       for (int i = 0; i < picked.length; i++) {
+        final xfile = picked[i];
+        final isVideo = xfile.mimeType?.startsWith('video/') == true;
         _compressionStatus = 'Przetwarzanie ${i + 1} / ${picked.length}...';
-        try {
-          final file = await _compressSingleImage(File(picked[i].path));
-          paths.add(file.path);
-        } catch (e) {
-          _showError(e);
-          paths.add(picked[i].path);
+
+        if (isVideo) {
+          try {
+            final shouldCompress = await _showCompressionChoice(File(xfile.path));
+            if (shouldCompress) {
+              setState(() => _compressionStatus = 'Kompresowanie filmu ${i + 1} / ${picked.length}...');
+              final compressed = await VideoCompressor.compress(File(xfile.path));
+              if (compressed != null) {
+                final newSizeMB = (await compressed.length()) / (1024 * 1024);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Film ${i + 1}: ${newSizeMB.toStringAsFixed(1)} MB'),
+                      backgroundColor: AppColors.accent.withOpacity(0.8),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+                paths.add(compressed.path);
+              } else {
+                paths.add(xfile.path);
+              }
+            } else {
+              paths.add(xfile.path);
+            }
+            types.add('video');
+          } catch (e) {
+            _showError(e);
+            paths.add(xfile.path);
+            types.add('video');
+          }
+        } else {
+          paths.add(xfile.path);
+          types.add('image');
         }
       }
 
-      if (picked.isNotEmpty) {
+      if (picked.isNotEmpty && widget.existingEntry == null) {
         try {
           final exifDate = await ExifUtils.readExifDate(picked.first.path);
-          if (exifDate != null && widget.existingEntry == null) {
+          if (exifDate != null) {
             setState(() {
               _entryDate = exifDate;
               _entryTime = TimeOfDay.fromDateTime(exifDate);
@@ -250,7 +248,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       _hideCompressionProgress();
       setState(() {
         _mediaPaths.addAll(paths);
-        _mediaTypes.addAll(List.filled(paths.length, 'image'));
+        _mediaTypes.addAll(types);
       });
     } catch (e) {
       _hideCompressionProgress();
@@ -316,6 +314,19 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       final compressed = await VideoCompressor.compress(File(picked.path));
 
       _hideCompressionProgress();
+      if (compressed != null) {
+        final newSizeMB = (await compressed.length()) / (1024 * 1024);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Skompresowano: ${newSizeMB.toStringAsFixed(1)} MB'),
+              backgroundColor: AppColors.accent.withOpacity(0.8),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
       setState(() {
         _mediaPaths.add(compressed?.path ?? picked.path);
         _mediaTypes.add('video');
@@ -470,27 +481,42 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
         _uploadProgressValue = 0;
       });
 
+      final newUploadPaths = <int>[];
       for (int i = 0; i < _mediaPaths.length; i++) {
-        final fileIndex = i;
-        try {
-          final storage = ref.read(storageProvider.notifier);
-          final ext = _mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
-          setState(() {
-            _uploadCurrentFile = fileIndex + 1;
-            _uploadStatus = 'Wysyłanie ${fileIndex + 1} / ${_mediaPaths.length}...';
-          });
-          await storage.uploadMedia(
-            file: File(_mediaPaths[i]),
-            path: 'media/${entry.uuid}_$i.$ext',
-            onProgress: (progress) {
-              setState(() {
-                _uploadProgressValue =
-                    (fileIndex + progress.fraction) / _mediaPaths.length;
-              });
-            },
-          );
-        } catch (e) {
-          _showError('Błąd wysyłania pliku ${i + 1}: $e');
+        if (File(_mediaPaths[i]).existsSync()) {
+          newUploadPaths.add(i);
+        }
+      }
+
+      if (newUploadPaths.isNotEmpty) {
+        setState(() {
+          _uploadTotalFiles = newUploadPaths.length;
+          _uploadCurrentFile = 0;
+          _uploadProgressValue = 0;
+        });
+
+        for (int idx = 0; idx < newUploadPaths.length; idx++) {
+          final i = newUploadPaths[idx];
+          try {
+            final storage = ref.read(storageProvider.notifier);
+            final ext = _mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
+            setState(() {
+              _uploadCurrentFile = idx + 1;
+              _uploadStatus = 'Wysyłanie ${idx + 1} / ${newUploadPaths.length}...';
+            });
+            await storage.uploadMedia(
+              file: File(_mediaPaths[i]),
+              path: 'media/${entry.uuid}_$i.$ext',
+              onProgress: (progress) {
+                setState(() {
+                  _uploadProgressValue =
+                      (idx + progress.fraction) / newUploadPaths.length;
+                });
+              },
+            );
+          } catch (e) {
+            _showError('Błąd wysyłania pliku ${i + 1}: $e');
+          }
         }
       }
 
@@ -879,7 +905,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 Row(
                   children: [
                     TextButton.icon(
-                      onPressed: () => _showImageSourceChooser(),
+                      onPressed: () => _showMediaSourceChooser(),
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Dodaj'),
                       style: TextButton.styleFrom(foregroundColor: AppColors.accent),
@@ -890,44 +916,21 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
           ),
           const SizedBox(height: 12),
           if (_mediaPaths.isEmpty) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: OutlinedButton.icon(
-                      onPressed: _showImageSourceChooser,
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Zdjęcia'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accent,
-                        side: const BorderSide(color: AppColors.borderGlow),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton.icon(
+                onPressed: _showMediaSourceChooser,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: const Text('Dodaj multimedia'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.accent,
+                  side: const BorderSide(color: AppColors.borderGlow),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: OutlinedButton.icon(
-                      onPressed: _showVideoSourceChooser,
-                      icon: const Icon(Icons.videocam),
-                      label: const Text('Film'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accent,
-                        side: const BorderSide(color: AppColors.borderGlow),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ] else ...[
             SizedBox(
@@ -941,7 +944,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                     return SizedBox(
                       width: 100,
                       child: OutlinedButton(
-                        onPressed: _showImageSourceChooser,
+                        onPressed: _showMediaSourceChooser,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.accent,
                           side: const BorderSide(color: AppColors.borderGlow),

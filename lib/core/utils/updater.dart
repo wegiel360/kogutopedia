@@ -20,7 +20,7 @@ class UpdateInfo {
 
 class AppUpdater {
   static const String _repo = 'wegiel360/kogutopedia';
-  static const String _currentVersion = '0.0.8.2-hotfix';
+  static const String _currentVersion = '0.0.8.3-hotfix';
 
   static Future<UpdateInfo?> checkForUpdate() async {
     try {
