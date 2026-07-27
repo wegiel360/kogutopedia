@@ -35,7 +35,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
   }
 
   void _initVideo() {
-    final file = File(widget.entry.mediaPath!);
+    final file = File(widget.entry.primaryMediaPath!);
     if (!file.existsSync()) return;
     _videoController = VideoPlayerController.file(file)
       ..initialize().then((_) {
@@ -64,7 +64,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => _FullScreenMedia(
-          path: widget.entry.mediaPath!,
+          path: widget.entry.primaryMediaPath!,
           isVideo: widget.entry.isVideo,
         ),
       ),
@@ -130,7 +130,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
           children: [
             if (widget.entry.isImage)
               Image.file(
-                File(widget.entry.mediaPath!),
+                File(widget.entry.primaryMediaPath!),
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.broken_image,

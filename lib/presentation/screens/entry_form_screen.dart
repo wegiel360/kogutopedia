@@ -33,8 +33,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   late DateTime _entryDate;
   late TimeOfDay _entryTime;
   String _selectedCharacter = AppConstants.defaultCharacter;
-  String? _mediaPath;
-  String? _mediaType;
+  List<String> _mediaPaths = [];
+  List<String> _mediaTypes = [];
   bool _isCustomCharacter = false;
   bool _isSaving = false;
   bool _isCompressing = false;
@@ -54,8 +54,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       _selectedCharacter = entry.characterName;
       _entryDate = entry.entryDate;
       _entryTime = TimeOfDay.fromDateTime(entry.entryDate);
-      _mediaPath = entry.mediaPath;
-      _mediaType = entry.mediaType;
+      _mediaPaths = List.from(entry.mediaPaths);
+      _mediaTypes = List.from(entry.mediaTypes);
       if (!AppConstants.predefinedCharacters.contains(entry.characterName)) {
         _isCustomCharacter = true;
         _customCharacterController.text = entry.characterName;
@@ -72,6 +72,17 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     _descriptionController.dispose();
     _customCharacterController.dispose();
     super.dispose();
+  }
+
+  void _showError(Object e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Błąd: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _showImageSourceChooser() {
@@ -95,18 +106,18 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Dodaj zdjęcie', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+              Text('Dodaj zdjęcia', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
               const SizedBox(height: 20),
               _sourceOption(
                 icon: Icons.photo_library,
-                label: 'Z galerii',
-                onTap: () { Navigator.of(ctx).pop(); _pickImage(ImageSource.gallery); },
+                label: 'Z galerii (wiele)',
+                onTap: () { Navigator.of(ctx).pop(); _pickMultipleImages(); },
               ),
               const SizedBox(height: 8),
               _sourceOption(
                 icon: Icons.camera_alt,
                 label: 'Zrób zdjęcie',
-                onTap: () { Navigator.of(ctx).pop(); _pickImage(ImageSource.camera); },
+                onTap: () { Navigator.of(ctx).pop(); _pickSingleImage(); },
               ),
             ],
           ),
@@ -193,6 +204,146 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     });
   }
 
+  Future<File?> _compressSingleImage(File file) async {
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: file.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Kadruj zdjęcie',
+            toolbarColor: AppColors.surfaceDark,
+            toolbarWidgetColor: AppColors.textPrimary,
+            backgroundColor: AppColors.background,
+            initAspectRatio: CropAspectRatioPreset.original,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+          ),
+        ],
+      );
+      if (cropped != null) return File(cropped.path);
+    } catch (_) {}
+    return file;
+  }
+
+  Future<void> _pickMultipleImages() async {
+    try {
+      final picked = await _picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 80,
+      );
+      if (picked.isEmpty) return;
+
+      _showCompressionProgress('Przetwarzanie ${picked.length} zdjęć...');
+
+      final paths = <String>[];
+      for (int i = 0; i < picked.length; i++) {
+        _compressionStatus = 'Przetwarzanie ${i + 1} / ${picked.length}...';
+        try {
+          final file = await _compressSingleImage(File(picked[i].path));
+          paths.add(file?.path ?? picked[i].path);
+        } catch (e) {
+          _showError(e);
+          paths.add(picked[i].path);
+        }
+      }
+
+      if (picked.isNotEmpty) {
+        try {
+          final exifDate = await ExifUtils.readExifDate(picked.first.path);
+          if (exifDate != null && widget.existingEntry == null) {
+            setState(() {
+              _entryDate = exifDate;
+              _entryTime = TimeOfDay.fromDateTime(exifDate);
+            });
+          }
+        } catch (_) {}
+      }
+
+      _hideCompressionProgress();
+      setState(() {
+        _mediaPaths.addAll(paths);
+        _mediaTypes.addAll(List.filled(paths.length, 'image'));
+      });
+    } catch (e) {
+      _hideCompressionProgress();
+      _showError(e);
+    }
+  }
+
+  Future<void> _pickSingleImage() async {
+    try {
+      final picked = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+
+      _showCompressionProgress('Przetwarzanie zdjęcia...');
+
+      try {
+        final exifDate = await ExifUtils.readExifDate(picked.path);
+        if (exifDate != null && widget.existingEntry == null) {
+          setState(() {
+            _entryDate = exifDate;
+            _entryTime = TimeOfDay.fromDateTime(exifDate);
+          });
+        }
+      } catch (_) {}
+
+      final file = await _compressSingleImage(File(picked.path));
+
+      _hideCompressionProgress();
+      setState(() {
+        _mediaPaths.add(file?.path ?? picked.path);
+        _mediaTypes.add('image');
+      });
+    } catch (e) {
+      _hideCompressionProgress();
+      _showError(e);
+    }
+  }
+
+  Future<void> _pickVideo(ImageSource source) async {
+    try {
+      final picked = await _picker.pickVideo(
+        source: source,
+        maxDuration: AppConstants.maxVideoDuration,
+      );
+      if (picked == null) return;
+
+      _hideCompressionProgress();
+      final shouldCompress = await _showCompressionChoice(File(picked.path));
+      if (!shouldCompress) {
+        setState(() {
+          _mediaPaths.add(picked.path);
+          _mediaTypes.add('video');
+        });
+        return;
+      }
+
+      _showCompressionProgress('Kompresowanie filmu...');
+
+      final compressed = await VideoCompressor.compress(File(picked.path));
+
+      _hideCompressionProgress();
+      setState(() {
+        _mediaPaths.add(compressed?.path ?? picked.path);
+        _mediaTypes.add('video');
+      });
+    } catch (e) {
+      _hideCompressionProgress();
+      _showError(e);
+    }
+  }
+
   Future<bool> _showCompressionChoice(File file) async {
     final sizeMB = await file.length() / (1024 * 1024);
     final sizeStr = sizeMB.toStringAsFixed(1);
@@ -243,95 +394,6 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       ),
     );
     return result == 'compress';
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final picked = await _picker.pickImage(
-        source: source,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 80,
-      );
-      if (picked == null) return;
-
-      _showCompressionProgress('Wczytywanie daty ze zdjęcia...');
-
-      try {
-        final exifDate = await ExifUtils.readExifDate(picked.path);
-        if (exifDate != null && widget.existingEntry == null) {
-          setState(() {
-            _entryDate = exifDate;
-            _entryTime = TimeOfDay.fromDateTime(exifDate);
-          });
-        }
-      } catch (_) {}
-
-      _compressionStatus = 'Przycinanie...';
-      String? resultPath;
-      try {
-        final cropped = await ImageCropper().cropImage(
-          sourcePath: picked.path,
-          uiSettings: [
-            AndroidUiSettings(
-              toolbarTitle: 'Kadruj zdjęcie',
-              toolbarColor: AppColors.surfaceDark,
-              toolbarWidgetColor: AppColors.textPrimary,
-              backgroundColor: AppColors.background,
-              initAspectRatio: CropAspectRatioPreset.original,
-              aspectRatioPresets: [
-                CropAspectRatioPreset.square,
-                CropAspectRatioPreset.ratio3x2,
-                CropAspectRatioPreset.original,
-                CropAspectRatioPreset.ratio4x3,
-                CropAspectRatioPreset.ratio16x9,
-              ],
-            ),
-          ],
-        );
-        resultPath = cropped?.path;
-      } catch (_) {}
-
-      _hideCompressionProgress();
-      setState(() {
-        _mediaPath = resultPath ?? picked.path;
-        _mediaType = 'image';
-      });
-    } catch (_) {
-      _hideCompressionProgress();
-    }
-  }
-
-  Future<void> _pickVideo(ImageSource source) async {
-    try {
-      final picked = await _picker.pickVideo(
-        source: source,
-        maxDuration: AppConstants.maxVideoDuration,
-      );
-      if (picked == null) return;
-
-      _hideCompressionProgress();
-      final shouldCompress = await _showCompressionChoice(File(picked.path));
-      if (!shouldCompress) {
-        setState(() {
-          _mediaPath = picked.path;
-          _mediaType = 'video';
-        });
-        return;
-      }
-
-      _showCompressionProgress('Kompresowanie filmu...');
-
-      final compressed = await VideoCompressor.compress(File(picked.path));
-
-      setState(() {
-        _hideCompressionProgress();
-        _mediaPath = compressed?.path ?? picked.path;
-        _mediaType = 'video';
-      });
-    } catch (_) {
-      _hideCompressionProgress();
-    }
   }
 
   Future<void> _selectDate() async {
@@ -407,8 +469,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
-      mediaPath: _mediaPath,
-      mediaType: _mediaType,
+      mediaPaths: _mediaPaths,
+      mediaTypes: _mediaTypes,
     );
 
     if (widget.existingEntry != null) {
@@ -417,12 +479,12 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       await ref.read(entryNotifierProvider.notifier).addEntry(entry);
     }
 
-    if (_mediaPath != null) {
+    for (int i = 0; i < _mediaPaths.length; i++) {
       final storage = ref.read(storageProvider.notifier);
-      final ext = _mediaType == 'video' ? 'mp4' : 'jpg';
+      final ext = _mediaTypes[i] == 'video' ? 'mp4' : 'jpg';
       storage.uploadMedia(
-        file: File(_mediaPath!),
-        path: 'media/${entry.uuid}.$ext',
+        file: File(_mediaPaths[i]),
+        path: 'media/${entry.uuid}_$i.$ext',
         onProgress: (_) {},
       );
     }
@@ -738,58 +800,28 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Media (opcjonalne)',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Media (${_mediaPaths.length})',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 16),
+              ),
+              if (_mediaPaths.isNotEmpty)
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => _showImageSourceChooser(),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Dodaj'),
+                      style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+                    ),
+                  ],
+                ),
+            ],
           ),
           const SizedBox(height: 12),
-          if (_mediaPath != null) ...[
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: _mediaType == 'image'
-                    ? DecorationImage(
-                        image: FileImage(File(_mediaPath!)),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                color: AppColors.surfaceMedium,
-              ),
-              child: _mediaType == 'video'
-                  ? const Center(
-                      child: Icon(
-                        Icons.play_circle_outline,
-                        color: AppColors.accent,
-                        size: 64,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: _showImageSourceChooser,
-                    icon: const Icon(Icons.swap_horiz, size: 18),
-                    label: const Text('Zmień media'),
-                    style: TextButton.styleFrom(foregroundColor: AppColors.accent),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => setState(() {
-                    _mediaPath = null;
-                    _mediaType = null;
-                  }),
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text('Usuń'),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                ),
-              ],
-            ),
-          ] else ...[
+          if (_mediaPaths.isEmpty) ...[
             Row(
               children: [
                 Expanded(
@@ -798,7 +830,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _showImageSourceChooser,
                       icon: const Icon(Icons.camera_alt),
-                      label: const Text('Zdjęcie'),
+                      label: const Text('Zdjęcia'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.accent,
                         side: const BorderSide(color: AppColors.borderGlow),
@@ -829,9 +861,81 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
                 ),
               ],
             ),
+          ] else ...[
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _mediaPaths.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  if (index == _mediaPaths.length) {
+                    return SizedBox(
+                      width: 100,
+                      child: OutlinedButton(
+                        onPressed: _showImageSourceChooser,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accent,
+                          side: const BorderSide(color: AppColors.borderGlow),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Icon(Icons.add, size: 32),
+                      ),
+                    );
+                  }
+                  return _buildMediaThumbnail(index);
+                },
+              ),
+            ),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildMediaThumbnail(int index) {
+    return Stack(
+      children: [
+        Container(
+          width: 100,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            image: _mediaTypes[index] == 'image'
+                ? DecorationImage(
+                    image: FileImage(File(_mediaPaths[index])),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+            color: AppColors.surfaceMedium,
+          ),
+          child: _mediaTypes[index] == 'video'
+              ? const Center(
+                  child: Icon(Icons.play_circle_outline, color: AppColors.accent, size: 32),
+                )
+              : null,
+        ),
+        Positioned(
+          top: 4, right: 4,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _mediaPaths.removeAt(index);
+                _mediaTypes.removeAt(index);
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: AppColors.error,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 14),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -5,8 +5,8 @@ class Entry {
   final String characterName;
   final String title;
   final String? description;
-  final String? mediaPath;
-  final String? mediaType;
+  final List<String> mediaPaths;
+  final List<String> mediaTypes;
 
   const Entry({
     required this.uuid,
@@ -15,8 +15,8 @@ class Entry {
     required this.characterName,
     required this.title,
     this.description,
-    this.mediaPath,
-    this.mediaType,
+    this.mediaPaths = const [],
+    this.mediaTypes = const [],
   });
 
   Entry copyWith({
@@ -26,8 +26,8 @@ class Entry {
     String? characterName,
     String? title,
     String? description,
-    String? mediaPath,
-    String? mediaType,
+    List<String>? mediaPaths,
+    List<String>? mediaTypes,
   }) {
     return Entry(
       uuid: uuid ?? this.uuid,
@@ -36,13 +36,15 @@ class Entry {
       characterName: characterName ?? this.characterName,
       title: title ?? this.title,
       description: description ?? this.description,
-      mediaPath: mediaPath ?? this.mediaPath,
-      mediaType: mediaType ?? this.mediaType,
+      mediaPaths: mediaPaths ?? this.mediaPaths,
+      mediaTypes: mediaTypes ?? this.mediaTypes,
     );
   }
 
   bool get hasDescription => description != null && description!.isNotEmpty;
-  bool get hasMedia => mediaPath != null && mediaPath!.isNotEmpty;
-  bool get isImage => mediaType == 'image';
-  bool get isVideo => mediaType == 'video';
+  bool get hasMedia => mediaPaths.isNotEmpty;
+  bool get isImage => mediaTypes.isNotEmpty && mediaTypes.first == 'image';
+  bool get isVideo => mediaTypes.isNotEmpty && mediaTypes.first == 'video';
+  String? get primaryMediaPath => mediaPaths.isNotEmpty ? mediaPaths.first : null;
+  String? get primaryMediaType => mediaTypes.isNotEmpty ? mediaTypes.first : null;
 }

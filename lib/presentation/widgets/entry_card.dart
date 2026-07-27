@@ -101,9 +101,9 @@ class EntryCard extends StatelessWidget {
         width: 100,
         child: Stack(
           children: [
-            if (entry.isImage && entry.mediaPath != null)
+            if (entry.isImage && entry.primaryMediaPath != null)
               Image.file(
-                File(entry.mediaPath!),
+                File(entry.primaryMediaPath!),
                 fit: BoxFit.cover,
                 width: 100,
                 height: double.infinity,

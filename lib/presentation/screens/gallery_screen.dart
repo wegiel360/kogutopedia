@@ -116,9 +116,9 @@ class GalleryScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.borderGlow.withOpacity(0.3)),
-          image: entry.isImage && entry.mediaPath != null
+          image: entry.isImage && entry.primaryMediaPath != null
               ? DecorationImage(
-                  image: FileImage(File(entry.mediaPath!)),
+                  image: FileImage(File(entry.primaryMediaPath!)),
                   fit: BoxFit.cover,
                 )
               : null,
@@ -155,10 +155,10 @@ class GalleryScreen extends ConsumerWidget {
             ),
           ),
           body: Center(
-            child: entry.isImage && entry.mediaPath != null
+            child: entry.isImage && entry.primaryMediaPath != null
                 ? InteractiveViewer(
                     child: Image.file(
-                      File(entry.mediaPath!),
+                      File(entry.primaryMediaPath!),
                       fit: BoxFit.contain,
                     ),
                   )

@@ -6,8 +6,8 @@ class EntryModel {
   final String characterName;
   final String title;
   final String? description;
-  final String? mediaPath;
-  final String? mediaType;
+  final List<String> mediaPaths;
+  final List<String> mediaTypes;
   final String dateKey;
 
   EntryModel({
@@ -18,8 +18,8 @@ class EntryModel {
     required this.characterName,
     required this.title,
     this.description,
-    this.mediaPath,
-    this.mediaType,
+    this.mediaPaths = const [],
+    this.mediaTypes = const [],
     String? dateKey,
   }) : dateKey = dateKey ?? _formatDateKey(entryDate);
 
@@ -34,21 +34,36 @@ class EntryModel {
         'characterName': characterName,
         'title': title,
         'description': description,
-        'mediaPath': mediaPath,
-        'mediaType': mediaType,
+        'mediaPaths': mediaPaths,
+        'mediaTypes': mediaTypes,
         'dateKey': dateKey,
       };
 
-  factory EntryModel.fromJson(Map<String, dynamic> json) => EntryModel(
-        id: json['id'] as int?,
-        uuid: json['uuid'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        entryDate: DateTime.parse(json['entryDate'] as String),
-        characterName: json['characterName'] as String,
-        title: json['title'] as String,
-        description: json['description'] as String?,
-        mediaPath: json['mediaPath'] as String?,
-        mediaType: json['mediaType'] as String?,
-        dateKey: json['dateKey'] as String?,
-      );
+  factory EntryModel.fromJson(Map<String, dynamic> json) {
+    List<String> mediaPaths;
+    List<String> mediaTypes;
+
+    if (json['mediaPaths'] is List) {
+      mediaPaths = (json['mediaPaths'] as List).cast<String>();
+      mediaTypes = (json['mediaTypes'] as List?)?.cast<String>() ?? [];
+    } else {
+      final oldPath = json['mediaPath'] as String?;
+      final oldType = json['mediaType'] as String?;
+      mediaPaths = oldPath != null ? [oldPath] : [];
+      mediaTypes = oldType != null ? [oldType] : [];
+    }
+
+    return EntryModel(
+      id: json['id'] as int?,
+      uuid: json['uuid'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      entryDate: DateTime.parse(json['entryDate'] as String),
+      characterName: json['characterName'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String?,
+      mediaPaths: mediaPaths,
+      mediaTypes: mediaTypes,
+      dateKey: json['dateKey'] as String?,
+    );
+  }
 }

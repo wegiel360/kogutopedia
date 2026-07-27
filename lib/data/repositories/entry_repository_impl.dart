@@ -49,8 +49,8 @@ class EntryRepositoryImpl implements EntryRepository {
         characterName: entry.characterName,
         title: entry.title,
         description: entry.description,
-        mediaPath: entry.mediaPath,
-        mediaType: entry.mediaType,
+        mediaPaths: entry.mediaPaths,
+        mediaTypes: entry.mediaTypes,
       );
       models.add(newModel);
       await _db.saveEntries(models);
@@ -77,8 +77,8 @@ class EntryRepositoryImpl implements EntryRepository {
         characterName: entry.characterName,
         title: entry.title,
         description: entry.description,
-        mediaPath: entry.mediaPath,
-        mediaType: entry.mediaType,
+        mediaPaths: entry.mediaPaths,
+        mediaTypes: entry.mediaTypes,
       );
       models[index] = updated;
       await _db.saveEntries(models);
@@ -157,8 +157,8 @@ class EntryRepositoryImpl implements EntryRepository {
       characterName: model.characterName,
       title: model.title,
       description: model.description,
-      mediaPath: model.mediaPath,
-      mediaType: model.mediaType,
+      mediaPaths: model.mediaPaths,
+      mediaTypes: model.mediaTypes,
     );
   }
 
@@ -170,8 +170,8 @@ class EntryRepositoryImpl implements EntryRepository {
       characterName: entry.characterName,
       title: entry.title,
       description: entry.description,
-      mediaPath: entry.mediaPath,
-      mediaType: entry.mediaType,
+      mediaPaths: entry.mediaPaths,
+      mediaTypes: entry.mediaTypes,
     );
   }
 }
