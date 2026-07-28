@@ -10,6 +10,7 @@ import '../providers/achievement_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
 import '../providers/stats_provider.dart';
+import '../providers/storage_provider.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/entry_card.dart';
 import '../widgets/glass_card.dart';
@@ -49,6 +50,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(statsNotifierProvider.notifier).loadStatistics();
       ref.read(achievementNotifierProvider.notifier).loadAchievements();
       ref.read(featherNotifierProvider.notifier).loadFeathers();
+      ref.read(storageProvider.notifier).refreshQuota();
     });
   }
 
@@ -141,11 +143,12 @@ class _DashboardContent extends ConsumerWidget {
     final entryState = ref.watch(entryNotifierProvider);
     final statsState = ref.watch(statsNotifierProvider);
     final achievementState = ref.watch(achievementNotifierProvider);
+    final storageState = ref.watch(storageProvider);
 
     return ResponsiveLayout(
-      mobile: _buildMobileLayout(context, ref, entryState, statsState, achievementState),
-      tablet: _buildTabletLayout(context, ref, entryState, statsState, achievementState),
-      desktop: _buildDesktopLayout(context, ref, entryState, statsState, achievementState),
+      mobile: _buildMobileLayout(context, ref, entryState, statsState, achievementState, storageState),
+      tablet: _buildTabletLayout(context, ref, entryState, statsState, achievementState, storageState),
+      desktop: _buildDesktopLayout(context, ref, entryState, statsState, achievementState, storageState),
     );
   }
 
@@ -155,11 +158,12 @@ class _DashboardContent extends ConsumerWidget {
     EntryState entryState,
     StatsState statsState,
     AchievementState achievementState,
+    StorageState storageState,
   ) {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          _buildHeader(context, ref, statsState, achievementState),
+          _buildHeader(context, ref, statsState, achievementState, storageState),
           _buildMotivationBar(context, entryState),
           _buildSearchBar(context, ref),
           if (entryState.entries.isEmpty)
@@ -183,6 +187,7 @@ class _DashboardContent extends ConsumerWidget {
     EntryState entryState,
     StatsState statsState,
     AchievementState achievementState,
+    StorageState storageState,
   ) {
     return SafeArea(
       child: Row(
@@ -192,7 +197,7 @@ class _DashboardContent extends ConsumerWidget {
             flex: 2,
             child: CustomScrollView(
               slivers: [
-                _buildHeader(context, ref, statsState, achievementState),
+                _buildHeader(context, ref, statsState, achievementState, storageState),
                 _buildMotivationBar(context, entryState),
                 if (entryState.entries.isEmpty)
                   const SliverFillRemaining(
@@ -231,6 +236,7 @@ class _DashboardContent extends ConsumerWidget {
     EntryState entryState,
     StatsState statsState,
     AchievementState achievementState,
+    StorageState storageState,
   ) {
     return SafeArea(
       child: Row(
@@ -240,7 +246,7 @@ class _DashboardContent extends ConsumerWidget {
             flex: 3,
             child: CustomScrollView(
               slivers: [
-                _buildHeader(context, ref, statsState, achievementState),
+                _buildHeader(context, ref, statsState, achievementState, storageState),
                 _buildMotivationBar(context, entryState),
                 if (entryState.entries.isEmpty)
                   const SliverFillRemaining(
@@ -280,6 +286,7 @@ class _DashboardContent extends ConsumerWidget {
     WidgetRef ref,
     StatsState statsState,
     AchievementState achievementState,
+    StorageState storageState,
   ) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -312,8 +319,75 @@ class _DashboardContent extends ConsumerWidget {
               streakCount: statsState.statistics?.streakCount ?? 0,
               totalEntries: statsState.statistics?.totalEntries ?? 0,
             ),
+            const SizedBox(height: 12),
+            _buildQuotaIndicator(storageState, context),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildQuotaIndicator(StorageState state, BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.glass,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderGlow.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cloud, color: AppColors.accent, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Firebase Storage',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: state.quotaFraction,
+              backgroundColor: AppColors.surfaceMedium,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                state.quotaFraction > 0.8
+                    ? AppColors.error
+                    : state.quotaFraction > 0.5
+                        ? AppColors.warning
+                        : AppColors.accent,
+              ),
+              minHeight: 5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Użyte: ${state.usedMB} MB',
+                style: GoogleFonts.jetBrainsMono().copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                ),
+              ),
+              Text(
+                'Wolne: ${state.remainingMB} MB',
+                style: GoogleFonts.jetBrainsMono().copyWith(
+                  color: AppColors.accent,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

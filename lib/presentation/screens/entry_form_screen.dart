@@ -179,7 +179,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   Future<File> _compressSingleImage(File file) async {
     try {
       final mediaPath = ref.read(databaseProvider).getMediaPath();
-      final outPath = '$mediaPath/img_${DateTime.now().millisecondsSinceEpoch}.jpeg';
+      final outPath = '$mediaPath/img_${DateTime.now().microsecondsSinceEpoch}.jpeg';
       final bytes = await file.readAsBytes();
       final decoded = img.decodeImage(bytes);
       if (decoded != null) {
